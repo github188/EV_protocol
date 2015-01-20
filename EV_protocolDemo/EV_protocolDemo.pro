@@ -19,9 +19,6 @@ MOC_DIR = ../build/moc
 UI_DIR = ../build/ui
 
 
-
-LIBS += -L ../build/lib/EVprotocol
-
 SOURCES += main.cpp\
         mainwindow.cpp
 

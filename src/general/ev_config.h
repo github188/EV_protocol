@@ -1,6 +1,8 @@
 #ifndef _EV_CONFIG_H_
 #define _EV_CONFIG_H_
 
+
+
 typedef unsigned char       quint8;
 typedef unsigned short      quint16;
 typedef unsigned int        quint32;
@@ -12,15 +14,13 @@ typedef  int        qint32;
 typedef  long       qint64;
 
 
-
-#if 0
+//适用于安卓的特定定位输出
+#if EV_ANDROID
+#include<android/log.h>
 #define EV_LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "EV_thread", __VA_ARGS__))
 #define EV_LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
 #define EV_LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
-
-
-
 //7级日志输出  数字越小级别越高
 #define EV_LOGI1(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGI2(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
@@ -29,7 +29,6 @@ typedef  long       qint64;
 #define EV_LOGI5(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGI6(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGI7(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-
 #define EV_LOGCOM(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 
 #define EV_LOGTASK(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))

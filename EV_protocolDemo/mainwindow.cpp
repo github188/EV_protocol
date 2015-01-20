@@ -8,6 +8,11 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    QLibrary lib("EVprotocol");
+    if(lib.load())
+    {
+        qDebug()<<"Load OK..";
+    }
 
 #ifdef _WIN32
     ui->lineEdit_port->setText("COM1");

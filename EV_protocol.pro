@@ -24,7 +24,7 @@ INCLUDEPATH += src/EV_api
 INCLUDEPATH += src/general
 INCLUDEPATH += src/yserialport
 INCLUDEPATH += src/ytimer
-
+INCLUDEPATH += src/cpp_export
 INCLUDEPATH += src/java_export/include
 
 
@@ -54,8 +54,7 @@ HEADERS += \
 #win32平台下的处理
 win32{
 DEF_FILE +=src/win32_api/EV_protocol.def
-DEFINES += EV_STDCALL  #注意在win32平台下统一采用stdcall标准调用方式
-
+DEFINES += EV_WIN32
 #QMAKE_CFLAGS +=--enable-stdcall-fixup
 SOURCES += \
     src/yserialport/win_yocserialport.c \
@@ -67,10 +66,10 @@ HEADERS += \
 
 unix{
 SOURCES += \
-    src/yserialport/unix_yocserialport.c \
+    src/yserialport/unix_yocserialport.c
 HEADERS += \
-    src/yserialport/unix_yocserialport.h \
-
+    src/yserialport/unix_yocserialport.h
+DEFINES += EV_UNIX
 }
 
 

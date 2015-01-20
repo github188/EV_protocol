@@ -57,6 +57,30 @@ JNIEXPORT jlong JNICALL Java_com_easivend_evprotocol_EVprotocol_getRemainAmount
 
 /*
  * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    cashControl
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_cashControl
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    setDate
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_setDate
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    cabinetControl
+ * Signature: (III)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_cabinetControl
+  (JNIEnv *, jobject, jint, jint, jint);
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
  * Method:    bentoRegister
  * Signature: (Ljava/lang/String;)I
  */

@@ -1,21 +1,17 @@
 #ifndef _YOC_SERIALPORT_H_
 #define _YOC_SERIALPORT_H_
-#ifdef _TTY_POSIX_
+
+#ifdef EV_UNIX
 #include "unix_yocSerialPort.h"
 #else
 #include "win_yocSerialPort.h"
 #endif
 
 
-#ifdef _WIN32
-#define OS_IS_WIN32
-#else
-#endif
-
-#ifdef OS_IS_WIN32
-#define  Y_FD  HANDLE
-#else
+#ifdef EV_UNIX
 #define  Y_FD  int
+#else
+#define  Y_FD  HANDLE
 #endif
 
 

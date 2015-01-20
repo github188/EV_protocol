@@ -4,8 +4,6 @@
 #include<string.h>
 #include<assert.h>
 #include<pthread.h>
-
-
 #include<jni.h>
 #include "EV_com.h"
 #include "json.h"
@@ -13,14 +11,16 @@
 #include "ev_config.h"
 #include "timer.h"
 
-#if _WIN32
-#define LOGI(...) printf(__VA_ARGS__)
-#define LOGW(...) printf(__VA_ARGS__)
-#define LOGE(...) printf(__VA_ARGS__)
-#else
+
+#if EV_ANDROID
+#include<android/log.h>
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
+#else
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGW(...) printf(__VA_ARGS__)
+#define LOGE(...) printf(__VA_ARGS__)
 #endif
 // 全局变量
 JavaVM* g_jvm = NULL;
@@ -42,6 +42,8 @@ void JNI_json_insert_str(json_t *json,char *label,char *value)
 	j_value = json_new_string(value);
 	json_insert_child(j_label,j_value);
 	json_insert_child(json,j_label);
+
+
 }
 
 
@@ -60,8 +62,127 @@ void JNI_json_insert_int(json_t *json,char *label,long value)
 
 
 
+json_t *JNI_setup_rpt(const void *ptr)
+{
+    json_t *root,*entry,*label,*sub;
+    ST_SETUP *setup;
+    root = json_new_object();
+    entry = json_new_object();
+    sub = json_new_object();
+    setup = (ST_SETUP *)ptr;
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_SETUP_RPT");
+
+    //语言版本
+    if(setup->language == 0)
+        JNI_json_insert_str(entry,"language","Chinese");
+    else if(setup->language == 1)
+        JNI_json_insert_str(entry,"language","English");
+    else
+        JNI_json_insert_str(entry,"language","Other");
+
+
+    //超时退币
+    JNI_json_insert_int(entry,"payoutTime",setup->payoutTime);
+    JNI_json_insert_int(entry,"ratio",setup->vmRatio);
+    JNI_json_insert_int(entry,"multBuy",setup->multBuy);
+    JNI_json_insert_int(entry,"forceBuy",setup->forceBuy);
+
+    JNI_json_insert_int(sub,"Recvtype",setup->bill.recvType);
+    JNI_json_insert_int(sub,"Recvch1",setup->bill.recvChannel[0]);
+    JNI_json_insert_int(sub,"Recvch2",setup->bill.recvChannel[1]);
+    JNI_json_insert_int(sub,"Recvch3",setup->bill.recvChannel[2]);
+    JNI_json_insert_int(sub,"Recvch4",setup->bill.recvChannel[3]);
+    JNI_json_insert_int(sub,"Recvch5",setup->bill.recvChannel[4]);
+    JNI_json_insert_int(sub,"Recvch6",setup->bill.recvChannel[5]);
+    JNI_json_insert_int(sub,"Recvch7",setup->bill.recvChannel[6]);
+    JNI_json_insert_int(sub,"Recvch8",setup->bill.recvChannel[7]);
+
+    JNI_json_insert_int(sub,"Changertype",setup->bill.changeType);
+    JNI_json_insert_int(sub,"Changerch1",setup->bill.changeChannel[0]);
+    JNI_json_insert_int(sub,"Changerch2",setup->bill.changeChannel[1]);
+    JNI_json_insert_int(sub,"Changerch3",setup->bill.changeChannel[2]);
+    JNI_json_insert_int(sub,"Changerch4",setup->bill.changeChannel[3]);
+    JNI_json_insert_int(sub,"Changerch5",setup->bill.changeChannel[4]);
+    JNI_json_insert_int(sub,"Changerch6",setup->bill.changeChannel[5]);
+    JNI_json_insert_int(sub,"Changerch7",setup->bill.changeChannel[6]);
+    JNI_json_insert_int(sub,"Changerch8",setup->bill.changeChannel[7]);
+
+    label = json_new_string("Bill");
+    json_insert_child(label,sub);
+    json_insert_child(entry,label);
+
+
+    sub = json_new_object();
+    JNI_json_insert_int(sub,"Recvtype",setup->coin.recvType);
+    JNI_json_insert_int(sub,"Recvch1",setup->coin.recvChannel[0]);
+    JNI_json_insert_int(sub,"Recvch2",setup->coin.recvChannel[1]);
+    JNI_json_insert_int(sub,"Recvch3",setup->coin.recvChannel[2]);
+    JNI_json_insert_int(sub,"Recvch4",setup->coin.recvChannel[3]);
+    JNI_json_insert_int(sub,"Recvch5",setup->coin.recvChannel[4]);
+    JNI_json_insert_int(sub,"Recvch6",setup->coin.recvChannel[5]);
+    JNI_json_insert_int(sub,"Recvch7",setup->coin.recvChannel[6]);
+    JNI_json_insert_int(sub,"Recvch8",setup->coin.recvChannel[7]);
+    JNI_json_insert_int(sub,"Changertype",setup->coin.changeType);
+    JNI_json_insert_int(sub,"Changerch1",setup->coin.changeChannel[0]);
+    JNI_json_insert_int(sub,"Changerch2",setup->coin.changeChannel[1]);
+    JNI_json_insert_int(sub,"Changerch3",setup->coin.changeChannel[2]);
+    JNI_json_insert_int(sub,"Changerch4",setup->coin.changeChannel[3]);
+    JNI_json_insert_int(sub,"Changerch5",setup->coin.changeChannel[4]);
+    JNI_json_insert_int(sub,"Changerch6",setup->coin.changeChannel[5]);
+    JNI_json_insert_int(sub,"Changerch7",setup->coin.changeChannel[6]);
+    JNI_json_insert_int(sub,"Changerch8",setup->coin.changeChannel[7]);
+    label = json_new_string("Coin");
+    json_insert_child(label,sub);
+    json_insert_child(entry,label);
+
+    sub = json_new_object();
+    JNI_json_insert_int(sub,"type",setup->bin.type);
+    JNI_json_insert_int(sub,"goc",setup->bin.goc);
+
+    label = json_new_string("Cabinet");
+    json_insert_child(label,sub);
+    json_insert_child(entry,label);
+
+
+    sub = json_new_object();
+    JNI_json_insert_int(sub,"type",setup->subBin.type);
+    JNI_json_insert_int(sub,"goc",setup->subBin.goc);
+    label = json_new_string("SubCabinet");
+    json_insert_child(label,sub);
+    json_insert_child(entry,label);
+
+
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+
+    return root;
+}
+
+
+
+json_t *JNI_trade_rpt(const void *ptr)
+{
+    json_t *root,*entry,*label;
+    ST_TRADE *trade = (ST_TRADE *)ptr;
+    root = json_new_object();
+    entry = json_new_object();
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_TRADE_RPT");
+    JNI_json_insert_int(entry,"cabinet",trade->cabinet);
+    JNI_json_insert_int(entry,"column",trade->column);
+    JNI_json_insert_int(entry,"result",trade->result);
+    JNI_json_insert_int(entry,"type",trade->type);
+    JNI_json_insert_int(entry,"cost",trade->cost);
+    JNI_json_insert_int(entry,"remainAmount",trade->remainAmount);
+    JNI_json_insert_int(entry,"remainCount",trade->remainCount);
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+    return root;
+}
+
 //回调函数
-void JNI_callBack(const int type,const void *ptr)
+static void JNI_callBack(const int type,const void *ptr)
 {
 	jstring msg;
 	char *text;
@@ -75,30 +196,10 @@ void JNI_callBack(const int type,const void *ptr)
 		case EV_SETUP_REQ:
 			break;
 		case EV_SETUP_RPT:
-			
+            root = JNI_setup_rpt(ptr);
 			break;
 		case EV_TRADE_RPT:
-			root = json_new_object();
-    		entry = json_new_object();
-            data = (quint8 *)ptr;
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_TRADE_RPT");				
-			JNI_json_insert_int(entry,"cabinet",data[MT + 1]);		
-			JNI_json_insert_int(entry,"column",data[MT + 3]);
-			JNI_json_insert_int(entry,"result",data[MT + 2]);
-			JNI_json_insert_int(entry,"type",data[MT + 4]);
-			temp = INTEG16(data[MT + 5],data[MT + 6]);
-			temp = EV_amountFromVM(temp);
-			
-			JNI_json_insert_int(entry,"cost",temp);
-			temp = INTEG16(data[MT + 7],data[MT + 8]);
-			temp = EV_amountFromVM(temp);			
-			JNI_json_insert_int(entry,"remainAmount",temp);
-			JNI_json_insert_int(entry,"remainCount",data[MT + 9]);
-
-			
-			label = json_new_string(JSON_HEAD);			
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
+            root = JNI_trade_rpt(ptr);
 			break;
 		case EV_PAYIN_RPT:
 			vm_ptr = (ST_VM_DATA *)ptr;
@@ -236,7 +337,7 @@ void *JNI_run(void* arg)
     int ret;
     EV_register(JNI_callBack);//注册回调
     // Attach主线程
-    ret  = (*g_jvm)->AttachCurrentThread(g_jvm,(void **)&g_env, NULL);
+    ret  = (*g_jvm)->AttachCurrentThread(g_jvm,&g_env, NULL);
     if(ret != JNI_OK)
     {
         LOGE("%s: AttachCurrentThread() failed", __FUNCTION__);
@@ -396,6 +497,80 @@ JNIEXPORT jlong JNICALL Java_com_easivend_evprotocol_EVprotocol_getRemainAmount
     env = env; obj = obj;
 	value = EV_vmGetAmount();
 	return value;
+}
+
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    cashControl
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_cashControl
+  (JNIEnv *env, jobject obj, jint flag)
+{
+    jint ret;
+    ret = EV_cash_control(flag);
+    return ret;
+
+}
+
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    cabinetControl
+ * Signature: (III)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_cabinetControl
+  (JNIEnv *env, jobject obj, jint cabinet, jint dev, jint flag)
+{
+    jint ret;
+    ret = EV_cabinet_control(cabinet,dev,flag);
+    return ret;
+}
+
+/*
+ * Class:     com_easivend_evprotocol_EVprotocol
+ * Method:    setDate
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_setDate
+  (JNIEnv *env, jobject obj, jstring dateStr)
+{
+    ST_DATE date;
+    jint ret;
+    char *data[20] = {0};
+    //date 日期 格式"2014-10-10 12:24:24"
+    char *buf = (char *)((*env)->GetStringUTFChars(env,dateStr, NULL));
+    memcpy(data,buf,4);
+    date.year = atoi((const char *)data);
+
+    memset(data,0,sizeof(data));
+    memcpy(data,&buf[5],2);
+    date.moth = atoi((const char *)data);
+
+    memset(data,0,sizeof(data));
+    memcpy(data,&buf[8],2);
+    date.day = atoi((const char *)data);
+
+    memset(data,0,sizeof(data));
+    memcpy(data,&buf[11],2);
+    date.hour = atoi((const char *)data);
+
+    memset(data,0,sizeof(data));
+    memcpy(data,&buf[14],2);
+    date.min = atoi((const char *)data);
+
+    memset(data,0,sizeof(data));
+    memcpy(data,&buf[17],2);
+    date.sec = atoi((const char *)data);
+
+
+    date.week = 1;
+
+    (*env)->ReleaseStringUTFChars(env,dateStr,buf);
+    ret = EV_set_date(&date);
+    return ret;
+
 }
 
 

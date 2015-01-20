@@ -9,56 +9,208 @@
 #include "ev_bento.h"
 #include "ev_config.h"
 #include "timer.h"
+#include "EVprotocol.h"
 
 
-#if 0
-#if _WIN32
-#define LOGI(...) printf(__VA_ARGS__)
-#define LOGW(...) printf(__VA_ARGS__)
-#define LOGE(...) printf(__VA_ARGS__)
-#else
+
+#if EV_ANDROID
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
+#else
+#define LOGI(...) printf(__VA_ARGS__)
+#define LOGW(...) printf(__VA_ARGS__)
+#define LOGE(...) printf(__VA_ARGS__)
 #endif
-// 全局变量
-JavaVM* g_jvm = NULL;
-jobject g_obj = NULL;
-JNIEnv *g_env = NULL;
+
 static pthread_t pid;
 static volatile int g_threadStop = 0;
-static jmethodID methodID_EV_callBack = NULL;
 
-#define JSON_HEAD		"EV_json"
-#define JSON_TYPE		"EV_type"
+static EV_CALLBACK_HANDLE EV_callBack_handle = NULL;
 
-void JNI_json_insert_str(json_t *json,char *label,char *value)
+static void JNI_callBack(const int type,const void *ptr)
 {
-	json_t *j_label,*j_value;
-	if(label == NULL || value == NULL || json == NULL )
-		return;
-	j_label = json_new_string(label);
-	j_value = json_new_string(value);
-	json_insert_child(j_label,j_value);
-	json_insert_child(json,j_label);
+    if(EV_callBack_handle)
+        EV_callBack_handle(type,ptr);
+}
+
+static void *EV_run(void* arg)
+{
+    EV_register(JNI_callBack);//注册回调
+    LOGI("thread_fun ready...\n");
+    while(!g_threadStop)
+    {
+       EV_task();
+    }
+    EV_release();
+    EV_callBack_handle = NULL;
+    LOGI("JNI Thread stopped....");
+    pid = 0;
+    pthread_exit(0);
+
+    return NULL;
+}
+
+int EV_API EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack)
+{
+    void *ret;
+    EV_callBack_handle = callBack;
+    EV_closeSerialPort();
+    int fd = EV_openSerialPort(portName,9600,8,'N',1);
+    if (fd < 0){
+            LOGE("Can't Open Serial Port:%s!",portName);
+            return -1;
+    }
+    LOGI("EV_openSerialPort suc.....!\n");
+    //串口打开成功  开启线程
+    if(pid)//线程已经开启了  关闭线程
+    {
+        LOGI("The serialport thread has runing!!!!");
+        g_threadStop = 1;
+        pthread_join(pid,&ret);
+    }
+    g_threadStop = 0;
+    pthread_create(&pid, NULL, EV_run, NULL);
+    return 1;
 }
 
 
-void JNI_json_insert_int(json_t *json,char *label,long value)
+
+
+void EV_API EV_vmcStop()
 {
-	json_t *j_label,*j_value;
-	char buf[10] = {0};
-	if(label == NULL || json == NULL )
-		return;
-	sprintf(buf,"%ld",value);
-	j_label = json_new_string(label);
-	j_value = json_new_number(buf);
-	json_insert_child(j_label,j_value);
-	json_insert_child(json,j_label);
+    LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
+    g_threadStop = 1;
 }
 
 
 
+int EV_API EV_trade(int cabinet,int column,int type,long cost)
+{
+    return EV_pcTrade(cabinet & 0xFF,column & 0xFF,type & 0xFF,cost);
+}
+
+
+
+
+int EV_API EV_payout(long value)
+{
+    return  EV_pcPayout(value);
+
+}
+
+
+int EV_API EV_getStatus()
+{
+    return EV_pcReqSend(GET_STATUS,0,NULL,0);
+}
+
+
+long EV_API EV_getRemainAmount()
+{
+    return EV_vmGetAmount();
+}
+
+
+
+
+int EV_API  EV_bentoRegister(char *portName)
+{
+    EV_bento_closeSerial();
+    int fd = EV_bento_openSerial(portName,9600,8,'N',1);
+    if (fd < 0){
+            LOGE("Can't Open Serial Port:%s!",portName);
+            return -1;
+    }
+    return 1;
+}
+
+
+int EV_API EV_bentoOpen(int cabinet, int box)
+{
+    return EV_bento_open(cabinet,box);
+}
+
+int EV_API EV_bentoRelease()
+{
+   return EV_bento_closeSerial();
+}
+
+
+int EV_API EV_bentoLight(int cabinet, int flag)
+{
+    return EV_bento_light(cabinet,flag);
+}
+
+
+int EV_API EV_bentoCheck(int cabinet,char *msg)
+{
+#if 0
+    json_t *root = NULL, *entry = NULL, *label;
+    char *text,id[10] = {0},i;
+
+    ST_BENTO_FEATURE st_bento;
+
+    env = env; obj = obj;
+    EV_LOGI5("EV_bento_check:start\n");
+    ret = EV_bento_check(cabinet, &st_bento);
+
+    if(ret == 1)
+    {
+            root = json_new_object();
+            entry = json_new_object();
+            JNI_json_insert_str(entry,JSON_TYPE,"EV_BENTO_FEATURE");
+            JNI_json_insert_int(entry,"boxNum",st_bento.boxNum);
+            JNI_json_insert_int(entry,"HotSupport",st_bento.ishot);
+            JNI_json_insert_int(entry,"CoolSupport",st_bento.iscool);
+            JNI_json_insert_int(entry,"LightSupport",st_bento.islight);
+
+            for(i = 0;i < 7;i++)
+            {
+                sprintf(&id[i * 2],"%02x",st_bento.id[i]);
+            }
+
+            JNI_json_insert_str(entry,"ID",id);
+            label = json_new_string(JSON_HEAD);
+            json_insert_child(label,entry);
+            json_insert_child(root,label);
+            json_tree_to_string(root, &text);
+            //memcpy(bentdata,text,sizeof());
+            //free(text);
+
+
+            str = (*g_env)->NewStringUTF(g_env,text);
+            json_free_value(&root);
+            return str;
+    }
+    str = (*g_env)->NewStringUTF(g_env,"");
+    return str;
+#endif
+}
+
+
+
+
+int EV_API EV_cashControl(int flag)
+{
+    return EV_cash_control(flag);
+}
+
+
+
+int EV_API EV_cabinetControl(int cabinet, int dev, int flag)
+{
+    return EV_cabinet_control(cabinet,dev,flag);
+}
+
+
+int EV_API EV_setDate(const EV_DATE *date)
+{
+    return EV_set_date((ST_DATE *)date);
+}
+
+
+#if 0
 //回调函数
 void JNI_callBack(const int type,const void *ptr)
 {
@@ -228,273 +380,6 @@ void JNI_callBack(const int type,const void *ptr)
     }
 }
 
-
-void *JNI_run(void* arg)
-{ 
-    jclass cls;
-    int ret;
-    EV_register(JNI_callBack);//注册回调
-    // Attach主线程
-    ret  = (*g_jvm)->AttachCurrentThread(g_jvm,(void **)&g_env, NULL);
-    if(ret != JNI_OK)
-    {
-        LOGE("%s: AttachCurrentThread() failed", __FUNCTION__);
-        pthread_exit(0);
-        return NULL;
-    }
-
-    // 找到对应的类
-    cls = (*g_env)->GetObjectClass(g_env, g_obj);
-    if(cls == NULL)
-    {
-        LOGE("FindClass() Error ......");
-        pthread_exit(0);
-        return NULL;
-    }
-    jstring msg = (*g_env)->NewStringUTF(g_env,"JNI CallBack OK...");
-    //获得类中的“成员”方法
-    methodID_EV_callBack = (*g_env)->GetMethodID(g_env,cls,"EV_callBack","(Ljava/lang/String;)V");
-    if(methodID_EV_callBack == NULL)
-    {
-        LOGE("GetMethodID() Error ......");
-    }
-    if(methodID_EV_callBack)// 最后调用类中“成员”方法
-    {
-        (*g_env)->CallVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
-    }
-
-    LOGI("thread_fun ready...\n");
-	while(!g_threadStop)
-	{
-       EV_task();
-	}
-
-    EV_release();
-    methodID_EV_callBack = NULL;
-    //Detach主线程
-    if((*g_jvm)->DetachCurrentThread(g_jvm) != JNI_OK)
-    {
-        LOGE("%s: DetachCurrentThread() failed", __FUNCTION__);
-    }
-	LOGI("JNI Thread stopped....");
-    pid = 0;
-	pthread_exit(0);
-
-    return NULL;
-}
-
-
-/*
-* Set some test stuff up.
-*
-* Returns the JNI version on success, -1 on failure.
-*/
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
-{
-	JNIEnv* env = NULL;
-    reserved = reserved;
-	if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_4) != JNI_OK) {
-		LOGE("GetEnv failed!");
-		return -1;
-	}
-	return JNI_VERSION_1_4;
-}
-
-
-/*
- * Class:     com_easivend_ev_vmc_EV_vmc
- * Method:    vmcStart
- * Signature: ()V
- */
-JNIEXPORT jint JNICALL
-Java_com_easivend_evprotocol_EVprotocol_vmcStart
-  (JNIEnv *env, jobject obj,jstring jport)
-{
-    void *ret;
-	const char *portName = (*env)->GetStringUTFChars(env,jport, NULL);
-    EV_closeSerialPort();
-	int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
-	(*env)->ReleaseStringUTFChars(env,jport,portName);
-    if (fd < 0){
-			LOGE("Can't Open Serial Port:%s!",portName);
-			return -1;
-	}
-	LOGI("EV_openSerialPort suc.....!\n");
-    //串口打开成功  开启线程
-    if(pid)//线程已经开启了  关闭线程
-    {
-        LOGI("The serialport thread has runing!!!!");
-        g_threadStop = 1;
-        pthread_join(pid,&ret);
-    }
-    (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
-    g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
-    g_threadStop = 0;
-    pthread_create(&pid, NULL, JNI_run, NULL);
-
-	return 1;
-
-
-}
-
-/*
- * Class:     com_easivend_ev_vmc_EV_vmc
- * Method:    vmcStop
- * Signature: ()V
- */
-JNIEXPORT void JNICALL
-Java_com_easivend_evprotocol_EVprotocol_vmcStop
-  (JNIEnv *env, jobject obj)
-{
-    env = env; obj = obj;
-	LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
-	g_threadStop = 1;
-}
-
-/*
- * Class:     com_easivend_ev_vmc_EV_vmc
- * Method:    trade
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL
-Java_com_easivend_evprotocol_EVprotocol_trade
-  (JNIEnv *env, jobject obj,jint cabinet, jint column, jint type, jint cost)
-{
-	jint ret;
-    env = env; obj = obj;
-	ret = EV_pcTrade(cabinet & 0xFF,column & 0xFF,type & 0xFF,cost & 0xFFFF);
-	return ret;
-}
-
-
-JNIEXPORT jint JNICALL 
-Java_com_easivend_evprotocol_EVprotocol_payout
-  (JNIEnv *env, jobject cls,jlong value)
-{
-	jint ret;
-    env = env; cls = cls;
-	ret = EV_pcPayout(value & 0xFFFF);
-	return ret;
-}
-
-
-
-
-JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_getStatus
-  (JNIEnv *env, jobject obj)
-{
-    env = env; obj = obj;
-	return EV_pcReqSend(GET_STATUS,0,NULL,0);
-}
-
-
-JNIEXPORT jlong JNICALL Java_com_easivend_evprotocol_EVprotocol_getRemainAmount
-  (JNIEnv *env, jobject obj)
-{
-	jlong value = 0;
-    env = env; obj = obj;
-	value = EV_vmGetAmount();
-	return value;
-}
-
-
-
-
-JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRegister
-  (JNIEnv *env, jobject obj, jstring jport)
-{
-	const char *portName = (*env)->GetStringUTFChars(env,jport, NULL);
-    env = env; obj = obj;
-    EV_bento_closeSerial();
-	int fd = EV_bento_openSerial((char *)portName,9600,8,'N',1);
-	(*env)->ReleaseStringUTFChars(env,jport,portName);
-    if (fd < 0){
-			LOGE("Can't Open Serial Port:%s!",portName);
-			return -1;
-	}
-	return 1;
-}
-
-
-JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoOpen
-  (JNIEnv *env, jobject obj, jint cabinet, jint box)
-{
-	jint ret = 0;
-    env = env; obj = obj;
-    ret = EV_bento_open(cabinet,box);
-
-	return ret;
-}
-
-JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRelease
-  (JNIEnv *env, jobject obj)
-{
-
-	jint ret = 1;
-    env = env; obj = obj;
-    EV_bento_closeSerial();
-	return ret;
-}
-
-
-
-JNIEXPORT jint JNICALL 
-Java_com_easivend_evprotocol_EVprotocol_bentoLight
-	(JNIEnv *env, jobject obj, jint cabinet, jint flag)
-{
-	jint ret = 0;
-    env = env; obj = obj;
-    ret = EV_bento_light(cabinet,flag);
-	return ret;
-}
-
-
-
-JNIEXPORT jstring JNICALL 
-Java_com_easivend_evprotocol_EVprotocol_bentoCheck
-  (JNIEnv *env, jobject obj, jint cabinet)
-{
-	jstring str;
-	jint ret;
-    json_t *root = NULL, *entry = NULL, *label;
-    char *text,id[10] = {0},i;
-
-	ST_BENTO_FEATURE st_bento;
-
-    env = env; obj = obj;
-	EV_LOGI5("EV_bento_check:start\n");
-	ret = EV_bento_check(cabinet, &st_bento);
-
-	if(ret == 1)
-	{
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_BENTO_FEATURE");
-			JNI_json_insert_int(entry,"boxNum",st_bento.boxNum);
-			JNI_json_insert_int(entry,"HotSupport",st_bento.ishot);
-			JNI_json_insert_int(entry,"CoolSupport",st_bento.iscool);
-			JNI_json_insert_int(entry,"LightSupport",st_bento.islight);
-
-			for(i = 0;i < 7;i++)
-			{
-                sprintf(&id[i * 2],"%02x",st_bento.id[i]);
-			}
-			
-			JNI_json_insert_str(entry,"ID",id);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			json_tree_to_string(root, &text);
-			//memcpy(bentdata,text,sizeof());
-			//free(text);
-			
-
-			str = (*g_env)->NewStringUTF(g_env,text);
-			json_free_value(&root);
-			return str;
-	}
-	str = (*g_env)->NewStringUTF(g_env,"");
-	return str;
-}
-
 #endif
+
+

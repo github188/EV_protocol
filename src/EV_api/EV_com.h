@@ -3,6 +3,7 @@
 
 #include "yoc_serialport.h"
 
+
 #define HEAD_EF     0xE5
 #define HEAD_LEN    5
 #define VER_F0_1    0x41
@@ -12,7 +13,7 @@
 #define HEAD   0
 #define LEN    1
 #define SN     2
-#define VF     3  
+#define VF     3
 #define MT     4
 
 //VMC-->PC
@@ -44,12 +45,7 @@
 #define GET_INFO_EXP 0x92
 #define SET_HUODAO  0x93
 #define GET_STATUS  0x86
-
 #define PAYOUT_IND	0x89
-
-
-
-
 
 //VMC当前状态
 #define EV_STATE_DISCONNECT		0    //断开连接
@@ -63,45 +59,39 @@
 #define PC_REQ_SENDING	1
 #define PC_REQ_HANDLING	2
 
-
-
-
-
-
-
 typedef enum{
-	EV_NA					=	0x00,
-	EV_SETUP_REQ 			= 	GET_SETUP,//初始化请求 
-	EV_SETUP_RPT 			= 	VMC_SETUP,//初始化结果返回
-	EV_INFO_REQ 			=  	GET_INFO,
-	EV_INFO_RPT 			=  	INFO_RPT,
-	EV_ACK_PC				=  	ACK,   //PC回应ACK
-	EV_NAK_PC   			=  	NAK,  //PC回应NAK
-	EV_ACK_VM				=  	ACK_RPT,
-	EV_NAK_VM				=	NAK_RPT,
-	EV_POLL					=	POLL,
-	EV_PAYIN_RPT			=	PAYIN_RPT,//投币报告
-	EV_COLUMN_REQ			=	GET_HUODAO,//获取货道
-	EV_COLUMN_RPT			=	HUODAO_RPT,//货道报告
-	EV_TRADE_REQ			=	VENDOUT_IND,
-	EV_TRADE_RPT			=	VENDOUT_RPT,
-	EV_ACTION_RPT			=	ACTION_RPT,	
-	EV_STATE_REQ			=	GET_STATUS,
-	EV_STATE_RPT			=	STATUS_RPT,
-	EV_BUTTON_RPT			=	BUTTON_RPT,
-	EV_CONTROL_REQ			=	CONTROL_IND,
-	EV_PAYOUT_REQ			=	PAYOUT_IND,
-	EV_PAYOUT_RPT			=	PAYOUT_RPT,
-	EV_CONTROL_RPT			=	0xA0,
-	EV_ACTION_REQ,
-	EV_ENTER_MANTAIN,
-	EV_EXIT_MANTAIN,
-	EV_INITING,
-	EV_RESTART,//VMC重启动作标志
-	EV_OFFLINE,//离线标志
-	EV_ONLINE,//在线标志
-	EV_TIMEOUT,//请求超时
-	EV_FAIL  //请求失败
+    EV_NA					=	0x00,
+    EV_SETUP_REQ 			= 	GET_SETUP,//初始化请求
+    EV_SETUP_RPT 			= 	VMC_SETUP,//初始化结果返回
+    EV_INFO_REQ 			=  	GET_INFO,
+    EV_INFO_RPT 			=  	INFO_RPT,
+    EV_ACK_PC				=  	ACK,   //PC回应ACK
+    EV_NAK_PC   			=  	NAK,  //PC回应NAK
+    EV_ACK_VM				=  	ACK_RPT,
+    EV_NAK_VM				=	NAK_RPT,
+    EV_POLL					=	POLL,
+    EV_PAYIN_RPT			=	PAYIN_RPT,//投币报告
+    EV_COLUMN_REQ			=	GET_HUODAO,//获取货道
+    EV_COLUMN_RPT			=	HUODAO_RPT,//货道报告
+    EV_TRADE_REQ			=	VENDOUT_IND,
+    EV_TRADE_RPT			=	VENDOUT_RPT,
+    EV_ACTION_RPT			=	ACTION_RPT,
+    EV_STATE_REQ			=	GET_STATUS,
+    EV_STATE_RPT			=	STATUS_RPT,
+    EV_BUTTON_RPT			=	BUTTON_RPT,
+    EV_CONTROL_REQ			=	CONTROL_IND,
+    EV_PAYOUT_REQ			=	PAYOUT_IND,
+    EV_PAYOUT_RPT			=	PAYOUT_RPT,
+    EV_CONTROL_RPT			=	0xA0,
+    EV_ACTION_REQ,
+    EV_ENTER_MANTAIN,
+    EV_EXIT_MANTAIN,
+    EV_INITING,
+    EV_RESTART,//VMC重启动作标志
+    EV_OFFLINE,//离线标志
+    EV_ONLINE,//在线标志
+    EV_TIMEOUT,//请求超时
+    EV_FAIL  //请求失败
 
 
 }EV_TYPE_REQ;
@@ -113,11 +103,11 @@ typedef enum{
 #define EV_TIMEROUT_PC_LONG   90  //30秒超时
 
 typedef struct _st_bill_{
-    quint8 recvType;
-    quint32  maxRecv;
-    quint32  recvChannel[8];
-    quint8 changeType;
-    quint32  changeChannel[8];
+    quint8      recvType;
+    quint32     maxRecv;
+    quint32     recvChannel[8];
+    quint8      changeType;
+    quint32     changeChannel[8];
 
 
 }ST_BILL;
@@ -140,31 +130,76 @@ typedef struct _st_card_{
 
 
 typedef struct _st_bin_{
-    quint8 type;
-
+    quint8 type;//0关闭 1弹簧 2老式升降机 3升降机+传送带 4升降机+弹簧
+    quint8 addGoods;//补货方式 0手动 1自动
+    quint8 goc;//0关闭出货确认  1开启
+    quint8 light;//0不支持 1支持
+    quint8 hot;//
+    quint8 cool;
+    quint8 keyboard;
+    quint8 compressor;
 }ST_BIN;
 
 
-typedef struct _st_vm_data_{
+typedef struct _st_trade_{
+    quint8 cabinet;
+    quint8 column;
+    quint8 result;
+    quint8 type;
+    quint8 cost;
+    quint32 remainAmount;
+    quint8 remainCount;
+}ST_TRADE;
+
+
+typedef struct _st_state_{
+    quint8 state;//VMC当前状态
+    quint8 bill;
+    quint8 coin;
+    quint8 cabinet;
+    quint8 billch[8];//纸币找零量
+    quint8 coinch[8];//硬币找零量
+
+}ST_STATE;
+
+
+typedef struct _st_setup_{
+    quint8  language;
     quint32 vmRatio;//VMC主控板比例因子 1表示分 10表示角  100表示元
-    quint8 multBuy;//多次购买
-    quint8 forceBuy;//强制购买
-	ST_BILL bill;
-	ST_COIN coin;
-	ST_CARD card;
-	ST_BIN	bin;
-	ST_BIN  subBin;
+    quint8  payoutTime;//超时退币  单位秒  255 表示不退币
+    quint8  multBuy;//多次购买
+    quint8  forceBuy;//强制购买
+    quint8  humanSensor;//是否支持人体接近感应
+    quint8  gameButton;
+    ST_BILL bill;
+    ST_COIN coin;
+    ST_CARD card;
+    ST_BIN	bin;
+    ST_BIN  subBin;
 
+}ST_SETUP;
 
-	//实时状态
+typedef struct _st_vm_data_{
+    ST_SETUP setup;
+    ST_TRADE trade;
+    //实时状态
     quint8 state;
     quint8 lastState;
     quint32 remainAmount;//当前投币余额
-	
+
 
 }ST_VM_DATA;
 
 
+typedef struct _st_date_{
+    quint16 year;
+    quint8 moth;
+    quint8 day;
+    quint8 hour;
+    quint8 min;
+    quint8 sec;
+    quint8 week;
+}ST_DATE;
 
 
 
@@ -176,14 +211,15 @@ int EV_release();
 int EV_vmMainFlow(const quint8 type,const quint8 *data,const quint8 len);
 int EV_vmRpt(const quint8 type,const quint8 *data,const quint8 len);
 
-quint8 EV_getVmState()	;
-
-
+quint8 EV_getVmState();
 void EV_task();
 quint32 EV_vmGetAmount();
-
 int EV_pcTrade(quint8 cabinet,quint8 column,quint8 type,quint32 cost);
 int EV_pcPayout(quint32 value);
+qint32 EV_set_date(ST_DATE *date);
+qint32 EV_cabinet_control(quint8 cabinet,quint8 dev,quint8 flag);
+qint32 EV_cash_control(quint8 flag);
+
 
 quint32	EV_pcReqSend(quint8 type,quint8 ackBack,quint8 *data,quint8 len);
 

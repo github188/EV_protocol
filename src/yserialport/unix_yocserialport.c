@@ -17,7 +17,7 @@ int unixserial_open(char *portName)
     int fd = open(portName, O_RDWR);
     if (fd < 0)
     {
-        printf("Can't Open Serial Port:%s\n",port);
+        printf("Can't Open Serial Port:%s\n",portName);
         return (-1);
     }
     return fd;
@@ -258,7 +258,7 @@ quint32 unixserial_bytesAvailable(int fd)
     }
     if (n==-1 || ioctl(fd, FIONREAD, &bytesQueued)==-1)
     {
-        translateError(errno);
+       // translateError(errno);
         return -1;
     }
     return bytesQueued;
@@ -287,7 +287,7 @@ quint32 unixserial_write (int fd,const char* pData, quint32 len)
 {
     quint32 written ;
     written = write(fd , pData , len);  //写串口
-    if(ret <0)
+    if(written <0)
     {
         perror("write serial");
         return 0;

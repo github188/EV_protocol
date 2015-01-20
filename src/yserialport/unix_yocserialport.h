@@ -1,13 +1,16 @@
 #ifndef _WIN_YOCSERIALPORT_H_
 #define _WIN_YOCSERIALPORT_H_
 #include "yoc_serialbase.h"
+#include "ev_config.h"
 #include <stdio.h>
-#include <termios.h>
-#include <errno.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/select.h>
+#include <errno.h>
+#include <string.h>
+#include <termios.h>
 
 
 
