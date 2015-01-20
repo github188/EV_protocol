@@ -28,6 +28,7 @@ static volatile int g_threadStop = 0;
 
 static EV_CALLBACK_HANDLE EV_callBack_handle = NULL;
 
+
 static void JNI_callBack(const int type,const void *ptr)
 {
     if(EV_callBack_handle)
@@ -54,6 +55,7 @@ static void *EV_run(void* arg)
 int EV_API EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack)
 {
     void *ret;
+    int rst;
     EV_callBack_handle = callBack;
     EV_closeSerialPort();
     int fd = EV_openSerialPort(portName,9600,8,'N',1);
@@ -70,8 +72,11 @@ int EV_API EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack)
         pthread_join(pid,&ret);
     }
     g_threadStop = 0;
-    pthread_create(&pid, NULL, EV_run, NULL);
-    return 1;
+    rst = pthread_create(&pid, NULL, EV_run, NULL);
+    if(rst == 0)
+        return 1;
+    else
+        return 0;
 }
 
 
@@ -204,182 +209,8 @@ int EV_API EV_cabinetControl(int cabinet, int dev, int flag)
 }
 
 
-int EV_API EV_setDate(const EV_DATE *date)
+int EV_API EV_setDate(const void *date)
 {
     return EV_set_date((ST_DATE *)date);
 }
-
-
-#if 0
-//回调函数
-void JNI_callBack(const int type,const void *ptr)
-{
-	jstring msg;
-	char *text;
-	unsigned int temp;
-    quint8 *data;
-	ST_VM_DATA *vm_ptr;
-    json_t *root = NULL, *entry = NULL, *label;
-
-	switch(type)
-	{
-		case EV_SETUP_REQ:
-			break;
-		case EV_SETUP_RPT:
-			
-			break;
-		case EV_TRADE_RPT:
-			root = json_new_object();
-    		entry = json_new_object();
-            data = (quint8 *)ptr;
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_TRADE_RPT");				
-			JNI_json_insert_int(entry,"cabinet",data[MT + 1]);		
-			JNI_json_insert_int(entry,"column",data[MT + 3]);
-			JNI_json_insert_int(entry,"result",data[MT + 2]);
-			JNI_json_insert_int(entry,"type",data[MT + 4]);
-			temp = INTEG16(data[MT + 5],data[MT + 6]);
-			temp = EV_amountFromVM(temp);
-			
-			JNI_json_insert_int(entry,"cost",temp);
-			temp = INTEG16(data[MT + 7],data[MT + 8]);
-			temp = EV_amountFromVM(temp);			
-			JNI_json_insert_int(entry,"remainAmount",temp);
-			JNI_json_insert_int(entry,"remainCount",data[MT + 9]);
-
-			
-			label = json_new_string(JSON_HEAD);			
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_PAYIN_RPT:
-			vm_ptr = (ST_VM_DATA *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYIN_RPT");
-			JNI_json_insert_int(entry,"remainAmount",(long)vm_ptr->remainAmount);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_PAYOUT_RPT:
-			vm_ptr = (ST_VM_DATA *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYOUT_RPT");
-			JNI_json_insert_int(entry,"remainAmount",vm_ptr->remainAmount);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_ENTER_MANTAIN:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_ENTER_MANTAIN");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_EXIT_MANTAIN:
-			root = json_new_object();
-    		entry = json_new_object();
-
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_EXIT_MANTAIN");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_OFFLINE:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_OFFLINE");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_ONLINE:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_ONLINE");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_RESTART:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_RESTART");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_INITING:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_INITING");
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_TIMEOUT:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_TIMEOUT");
-            data = (quint8 *)ptr;
-			JNI_json_insert_int(entry,"cmd",*data);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_NA:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_NA");
-            data = (quint8 *)ptr;
-			JNI_json_insert_int(entry,"cmd",*data);			
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_STATE_RPT:
-            data = (quint8 *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_STATE_RPT");
-			JNI_json_insert_int(entry,"state",(int)(*data));
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-		case EV_BUTTON_RPT:// type 表示 按键类型 0 游戏 1货道  2退币  cabinet 柜号 value 具体值(只有货道按键有意义)
-            data = (quint8 *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_BUTTON_RPT");
-			JNI_json_insert_int(entry,"type",data[0]);
-			JNI_json_insert_int(entry,"cabinet",data[1]);
-			JNI_json_insert_int(entry,"value",data[2]);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			
-			break;
-		default:
-			break;
-	}
-
-    if(root != NULL)
-    {
-        json_tree_to_string(root, &text);
-        msg = (*g_env)->NewStringUTF(g_env,text);
-        if(methodID_EV_callBack)// 最后调用类中“成员”方法
-        {
-            (*g_env)->CallVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
-        }
-        free(text);
-        json_free_value(&root);
-    }
-}
-
-#endif
-
 

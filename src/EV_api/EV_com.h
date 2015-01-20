@@ -59,42 +59,44 @@
 #define PC_REQ_SENDING	1
 #define PC_REQ_HANDLING	2
 
-typedef enum{
-    EV_NA					=	0x00,
-    EV_SETUP_REQ 			= 	GET_SETUP,//初始化请求
-    EV_SETUP_RPT 			= 	VMC_SETUP,//初始化结果返回
-    EV_INFO_REQ 			=  	GET_INFO,
-    EV_INFO_RPT 			=  	INFO_RPT,
-    EV_ACK_PC				=  	ACK,   //PC回应ACK
-    EV_NAK_PC   			=  	NAK,  //PC回应NAK
-    EV_ACK_VM				=  	ACK_RPT,
-    EV_NAK_VM				=	NAK_RPT,
-    EV_POLL					=	POLL,
-    EV_PAYIN_RPT			=	PAYIN_RPT,//投币报告
-    EV_COLUMN_REQ			=	GET_HUODAO,//获取货道
-    EV_COLUMN_RPT			=	HUODAO_RPT,//货道报告
-    EV_TRADE_REQ			=	VENDOUT_IND,
-    EV_TRADE_RPT			=	VENDOUT_RPT,
-    EV_ACTION_RPT			=	ACTION_RPT,
-    EV_STATE_REQ			=	GET_STATUS,
-    EV_STATE_RPT			=	STATUS_RPT,
-    EV_BUTTON_RPT			=	BUTTON_RPT,
-    EV_CONTROL_REQ			=	CONTROL_IND,
-    EV_PAYOUT_REQ			=	PAYOUT_IND,
-    EV_PAYOUT_RPT			=	PAYOUT_RPT,
-    EV_CONTROL_RPT			=	0xA0,
-    EV_ACTION_REQ,
-    EV_ENTER_MANTAIN,
-    EV_EXIT_MANTAIN,
-    EV_INITING,
-    EV_RESTART,//VMC重启动作标志
-    EV_OFFLINE,//离线标志
-    EV_ONLINE,//在线标志
-    EV_TIMEOUT,//请求超时
-    EV_FAIL  //请求失败
 
 
-}EV_TYPE_REQ;
+#define EV_NA               0x00
+#define EV_SETUP_REQ        0x90 //初始化请求
+#define EV_SETUP_RPT 		0x05//初始化结果返回
+#define EV_INFO_REQ 		0x8C
+#define EV_INFO_RPT 		0x11
+#define EV_ACK_PC           0x80
+
+#define EV_NAK_PC           0x81//PC回应NAK
+#define EV_ACK_VM           0x01
+#define EV_NAK_VM           0x02
+#define EV_POLL             0x03
+#define EV_PAYIN_RPT        0x06//投币报告
+#define EV_COLUMN_REQ       0x8A//获取货道
+#define EV_COLUMN_RPT       0x0E//货道报告
+#define EV_TRADE_REQ        0x83
+#define EV_TRADE_RPT        0x08
+
+#define EV_ACTION_RPT       0x0B
+#define EV_STATE_REQ        0x86
+#define EV_STATE_RPT        0x0D
+#define EV_BUTTON_RPT       0x0C
+#define EV_CONTROL_REQ      0x85
+#define EV_PAYOUT_REQ       0x89
+#define EV_PAYOUT_RPT       0x07
+#define EV_CONTROL_RPT      0xA0
+#define EV_ACTION_REQ       0xA1
+#define EV_ENTER_MANTAIN    0xA2
+#define EV_EXIT_MANTAIN     0xA3
+
+#define EV_INITING          0xA4
+#define EV_RESTART          0xA5
+#define EV_OFFLINE          0xA6
+#define EV_ONLINE           0xA7
+#define EV_TIMEOUT          0xA8
+#define EV_FAIL             0xA9
+#define EV_EXIT_MANTAIN     0xA3
 
 
 

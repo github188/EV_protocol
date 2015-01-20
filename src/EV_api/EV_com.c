@@ -535,7 +535,7 @@ void EV_task()
 
 
 
-void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
+static void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
 {
     quint8 index = MT + 1;
     quint8 temp = 0,i;
@@ -634,7 +634,7 @@ void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
 
 
 
-void EV_payin_rpt(quint8 *data)
+static void EV_payin_rpt(quint8 *data)
 {
     quint8 index = MT + 1,temp = 0;
     quint32 temp32;
@@ -649,7 +649,7 @@ void EV_payin_rpt(quint8 *data)
 }
 
 
-void EV_trade_rpt(ST_TRADE *trade,quint8 *data)
+static void EV_trade_rpt(ST_TRADE *trade,quint8 *data)
 {
     quint8 index = MT + 1;
     quint32 temp;
@@ -668,7 +668,7 @@ void EV_trade_rpt(ST_TRADE *trade,quint8 *data)
 
 
 
-void EV_payout_rpt(quint8 *data)
+static void EV_payout_rpt(quint8 *data)
 {
     quint8 index = MT + 1,temp = 0;
     quint32 temp32;
