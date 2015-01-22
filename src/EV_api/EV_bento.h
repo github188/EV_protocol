@@ -23,11 +23,11 @@
 
 typedef struct _st_bento_feature_{
 
-    quint8 ishot;
-    quint8 islight;
-    quint8 iscool;
-    quint16 boxNum;
-    quint8 id[10];
+    uint8 ishot;
+    uint8 islight;
+    uint8 iscool;
+    uint16 boxNum;
+    uint8 id[10];
 }ST_BENTO_FEATURE;
 
 
@@ -36,5 +36,5 @@ int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int sto
 ;
 int EV_bento_closeSerial();
 int EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento);
-int EV_bento_light(int cabinet,quint8 flag);
+int EV_bento_light(int cabinet,uint8 flag);
 #endif

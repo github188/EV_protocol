@@ -9,8 +9,8 @@
 #include "timer.h"
 #include "ev_config.h"
 
-static quint8 recvbuf[512],sendbuf[512];
-static quint8 snNo = 0;
+static uint8 recvbuf[512],sendbuf[512];
+static uint8 snNo = 0;
 
 #define LOG_STYLES_HELLO	( LOG_STYLE_DATETIMEMS | LOG_STYLE_LOGLEVEL | LOG_STYLE_PID | LOG_STYLE_TID | LOG_STYLE_SOURCE | LOG_STYLE_FORMAT | LOG_STYLE_NEWLINE )
 
@@ -18,14 +18,14 @@ static quint8 snNo = 0;
 
 static ST_VM_DATA st_vm; 
 
-volatile quint8 pcLock;//PC请求互斥锁
-volatile quint8 pcType,pcsubType;//PC请求类型 0表示无请求标志空闲
-volatile quint8 pcFlag;//VMC 0空闲 1需要发送请求  2正在处理请求
+volatile uint8 pcLock;//PC请求互斥锁
+volatile uint8 pcType,pcsubType;//PC请求类型 0表示无请求标志空闲
+volatile uint8 pcFlag;//VMC 0空闲 1需要发送请求  2正在处理请求
 
-static quint8 vm_state = EV_STATE_DISCONNECT,last_vm_state = EV_STATE_DISCONNECT;
+static uint8 vm_state = EV_STATE_DISCONNECT,last_vm_state = EV_STATE_DISCONNECT;
 static Y_FD vmc_fd;
-EV_callBack EV_callBack_fun = NULL;
 
+EV_callBack EV_callBack_fun = NULL;
 
 
 /*********************************************************************************************************
@@ -37,7 +37,7 @@ static ST_TIMER timer_vmc,timer_pc;
 
 
 //设置PC类型
-void EV_set_pc_cmd(const quint8 type)
+void EV_set_pc_cmd(const uint8 type)
 { 
 	if(type == EV_NA)
 	{
@@ -53,38 +53,38 @@ void EV_set_pc_cmd(const quint8 type)
 }
 
 
-quint8	EV_get_pc_cmd()
+uint8	EV_get_pc_cmd()
 {
 	return pcType;
 }
 
 
 
-void EV_setSubcmd(quint8 type)
+void EV_setSubcmd(uint8 type)
 {
 	pcsubType = type;
 
 }
 
 
-quint8 EV_getSubcmd()
+uint8 EV_getSubcmd()
 {
 	return pcsubType;
 }
 
-void EV_set_pc_flag(quint8 flag)
+void EV_set_pc_flag(uint8 flag)
 {
 	pcFlag = flag;
 }
 
-quint8 EV_get_pc_flag()
+uint8 EV_get_pc_flag()
 {
 	return pcFlag;
 }
 
 
 
-void EV_setVmState(const quint8 type)
+void EV_setVmState(const uint8 type)
 {
 	last_vm_state = vm_state; 
 	vm_state = type;
@@ -93,29 +93,29 @@ void EV_setVmState(const quint8 type)
 }
 
 
-quint8 EV_getVmState()
+uint8 EV_getVmState()
 {
 	return vm_state;
 }
 
 
-quint8	EV_getLastVmState()
+uint8	EV_getLastVmState()
 {
 	return last_vm_state;
 }
 
 
 //将VM获取的金额转换为分
-quint32 EV_amountFromVM(const quint32 value)
+uint32 EV_amountFromVM(const uint32 value)
 {
-    quint32 temp = value * st_vm.setup.vmRatio;
+    uint32 temp = value * st_vm.setup.vmRatio;
 	return temp;
 }
 
 //将金额按VM比例 转换
-quint32 EV_amountToVM(const quint32 value)
+uint32 EV_amountToVM(const uint32 value)
 {
-    quint32 temp = value / st_vm.setup.vmRatio;
+    uint32 temp = value / st_vm.setup.vmRatio;
 	return temp;
 }
 
@@ -127,7 +127,7 @@ quint32 EV_amountToVM(const quint32 value)
 ** output parameters:   无
 ** Returned value:
 *********************************************************************************************************/
-quint8 EV_pcEncodAmount(quint32 amount)
+uint8 EV_pcEncodAmount(uint32 amount)
 {
 
     unsigned char i = 0,value;
@@ -165,7 +165,7 @@ quint8 EV_pcEncodAmount(quint32 amount)
 ** output parameters:   无
 ** Returned value:
 *********************************************************************************************************/
-static quint32 EV_pcAnalysisAmount(quint8 data)
+static uint32 EV_pcAnalysisAmount(uint8 data)
 {
 
     unsigned int amount;
@@ -186,7 +186,7 @@ static quint32 EV_pcAnalysisAmount(quint8 data)
 
 
 
-quint32 EV_vmGetAmount()
+uint32 EV_vmGetAmount()
 {
 	return st_vm.remainAmount;
 }
@@ -227,10 +227,10 @@ void EV_callbackhandle(int type,void *ptr)
 
 
 
-void EV_COMLOG(int type ,quint8 *data)
+void EV_COMLOG(int type ,uint8 *data)
 {
 	char buf[256] = {0};
-    quint16 i;
+    uint16 i;
     for(i = 0;i < (data[1] + 2);i++)
 		sprintf(&buf[i*3],"%02x ",data[i]);
 	if(type == 1)
@@ -250,16 +250,16 @@ int EV_getCh(char *ch)
 
 
 
-void EV_replyACK(const quint8 flag)
+void EV_replyACK(const uint8 flag)
 {
-    quint8 pc_ack,ix = 0,buf[10] = {0};
+    uint8 pc_ack,ix = 0,buf[10] = {0};
     pc_ack = (flag == 1) ? ACK : NAK;
     buf[ix++] = HEAD_EF;
 	buf[ix++] = HEAD_LEN;
 	buf[ix++] = snNo;
 	buf[ix++] = VER_F0_0;
 	buf[ix++] = pc_ack;
-    quint16 crc = EV_crcCheck(buf,ix);
+    uint16 crc = EV_crcCheck(buf,ix);
 	buf[ix++] = crc / 256;
 	buf[ix++] = crc % 256;
     yserial_write(vmc_fd,(char *)buf,ix);
@@ -269,10 +269,10 @@ void EV_replyACK(const quint8 flag)
 
 
 //0超时 1ACK  2NAK
-quint8 EV_recvACK()
+uint8 EV_recvACK()
 {
-    quint8 ix = 0,buf[HEAD_LEN + 2],ch;//400ms
-    quint16 crc,timeout = 400;//4
+    uint8 ix = 0,buf[HEAD_LEN + 2],ch;//400ms
+    uint16 crc,timeout = 400;//4
 	while(timeout)
 	{
 		if(EV_getCh((char *)&ch))
@@ -321,11 +321,11 @@ quint8 EV_recvACK()
 *********************************************************************************************************/
 int EV_sendReq()
 {
-    quint8 i;
-    quint8	len = sendbuf[1];//重定位发送包校验值
-    quint8 rAck;
+    uint8 i;
+    uint8	len = sendbuf[1];//重定位发送包校验值
+    uint8 rAck;
 	sendbuf[2] = snNo;
-    quint16 crc = EV_crcCheck(sendbuf,len);
+    uint16 crc = EV_crcCheck(sendbuf,len);
 	sendbuf[len + 0] = crc / 256;
 	sendbuf[len + 1] = crc % 256;	
 	for(i = 0;i < 3;i--)
@@ -377,7 +377,7 @@ int EV_sendReq()
 *********************************************************************************************************/
 int EV_send()
 {	
-    quint8 mt = recvbuf[MT];
+    uint8 mt = recvbuf[MT];
 	if(snNo == recvbuf[SN])//重包 直接抛弃
     {
 		if(recvbuf[VF] == VER_F0_1)
@@ -407,8 +407,8 @@ int EV_send()
 
 int EV_recv()
 {
-    quint8 ch,ix = 0,len;
-    quint16 crc;
+    uint8 ch,ix = 0,len;
+    uint16 crc;
 
     if(!yserial_bytesAvailable(vmc_fd))
 	//if(!EV_getCh((char *)&ch))
@@ -474,37 +474,31 @@ int EV_recv()
 ** Returned value:    0 失败 1成功  
 *********************************************************************************************************/
 
-quint32	EV_pcReqSend(quint8 type,quint8 ackBack,quint8 *data,quint8 len)
+uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 {
-    quint8	ix = 0;
+    uint8	ix = 0;
 	int i;
-	
 	if(EV_get_pc_flag() != PC_REQ_IDLE)
 	{
 		EV_callbackhandle(EV_FAIL,"EV_pcReqSend is not PC_REQ_IDLE:\n");
 		EV_LOGW("EV_pcReqSend send failed,anther request...");
 		return 0;//如果有请求则退出
 	}
-
 	sendbuf[ix++] = HEAD_EF;
 	sendbuf[ix++] = len + HEAD_LEN;
 	sendbuf[ix++] = 0;//预留
-	sendbuf[ix++] = (ackBack == 1) ? VER_F0_1 : VER_F0_0;
+    sendbuf[ix++] = ((ackBack == 0) ? VER_F0_0 : VER_F0_1);
 	sendbuf[ix++] = type;
 	for(i = 0;i < len;i++)
 	{
 		sendbuf[ix++] = data[i];
 	}
-
 	EV_set_pc_cmd(type);
-	EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
-
+    //EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
         EV_timer_start(&timer_pc,EV_TIMEROUT_PC_LONG);
 	else						//一般为3秒
         EV_timer_start(&timer_pc,EV_TIMEROUT_PC);
-
-
 	return 1;
 
 }
@@ -535,10 +529,10 @@ void EV_task()
 
 
 
-static void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
+static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
 {
-    quint8 index = MT + 1;
-    quint8 temp = 0,i;
+    uint8 index = MT + 1;
+    uint8 temp = 0,i;
     temp = data[index++];//bin num
     temp = temp;
 
@@ -551,6 +545,7 @@ static void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
 
     //特征值 4个字节 前3个字节预留
     index += 3;
+
     temp = data[index++];
     setup->multBuy = temp & 0x01;
     setup->forceBuy = (temp >> 1) & 0x01;
@@ -558,34 +553,34 @@ static void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
     setup->gameButton = (temp >> 3) & 0x01;
 
 
-    setup->bill.recvType = data[index++];
-    setup->bill.maxRecv = INTEG32(data[index + 0],data[index + 1],
+    setup->bill.recv_type = data[index++];
+    setup->bill.recv_max_value = INTEG32(data[index + 0],data[index + 1],
                         data[index + 2],data[index + 3]);
     index += 4;
 
     for(i = 0;i < 8;i++)
 	{
-        setup->bill.recvChannel[i] = EV_pcAnalysisAmount(data[index++]);
+        setup->bill.recv_ch[i] = EV_pcAnalysisAmount(data[index++]);
 	}
-    setup->bill.changeType = data[index++];
+    setup->bill.change_type = data[index++];
 	for(i = 0;i < 8;i++)
 	{
-        setup->bill.changeChannel[i] = EV_pcAnalysisAmount(data[index++]);
+        setup->bill.change_ch[i] = EV_pcAnalysisAmount(data[index++]);
 	}
 
 
-    setup->coin.recvType = data[index++];
-    setup->coin.maxRecv = INTEG32(data[index + 0],data[index + 1],
+    setup->coin.recv_type = data[index++];
+    setup->coin.recv_max_value = INTEG32(data[index + 0],data[index + 1],
             data[index + 2],data[index + 3]);
     index += 4;
 	for(i = 0;i < 8;i++)
 	{
-        setup->coin.recvChannel[i] = EV_pcAnalysisAmount(data[index++]);
+        setup->coin.recv_ch[i] = EV_pcAnalysisAmount(data[index++]);
 	}
-    setup->coin.changeType = data[index++];
+    setup->coin.change_type = data[index++];
 	for(i = 0;i < 8;i++)
 	{
-        setup->coin.changeChannel[i] = EV_pcAnalysisAmount(data[index++]);
+        setup->coin.change_ch[i] = EV_pcAnalysisAmount(data[index++]);
 	}
 
     setup->card.type = data[index++];
@@ -631,13 +626,10 @@ static void EV_setup_rpt(ST_SETUP *setup,quint8 *data)
 }
 
 
-
-
-
-static void EV_payin_rpt(quint8 *data)
+static void EV_payin_rpt(uint8 *data)
 {
-    quint8 index = MT + 1,temp = 0;
-    quint32 temp32;
+    uint8 index = MT + 1,temp = 0;
+    uint32 temp32;
     temp = temp;
 	temp = data[index++];//bill or coin
 	temp = data[index++];
@@ -649,18 +641,23 @@ static void EV_payin_rpt(quint8 *data)
 }
 
 
-static void EV_trade_rpt(ST_TRADE *trade,quint8 *data)
+static void EV_trade_rpt(ST_TRADE *trade,uint8 *data)
 {
-    quint8 index = MT + 1;
-    quint32 temp;
+    uint8 index = MT + 1;
+    uint32 temp;
 
     trade->cabinet = data[index++];
     trade->result = data[index++];
     trade->column = data[index++];
     trade->type = data[index++];
-    temp = INTEG16(data[index++],data[index++]);
+    temp = INTEG16(data[index + 0],data[index + 1]);
+    index+=2;
     trade->cost = EV_amountFromVM(temp);
-    temp = INTEG16(data[index++],data[index++]);
+
+
+    temp = INTEG16(data[index + 0],data[index + 1]);
+    index+=2;
+
     trade->remainAmount = EV_amountFromVM(temp);
     trade->remainCount = data[index++];
 
@@ -668,16 +665,18 @@ static void EV_trade_rpt(ST_TRADE *trade,quint8 *data)
 
 
 
-static void EV_payout_rpt(quint8 *data)
+static void EV_payout_rpt(uint8 *data)
 {
-    quint8 index = MT + 1,temp = 0;
-    quint32 temp32;
+    uint8 index = MT + 1,temp = 0;
+    uint32 temp32;
 
     temp = temp;
 	temp = data[index++];//bill or coin
 	
 	temp = data[index++];
 	temp = data[index++];
+
+
 
     temp32 = INTEG16(data[index + 0],data[index + 1]);
     index += 2;
@@ -694,9 +693,9 @@ static void EV_payout_rpt(quint8 *data)
 ** output parameters:		无
 ** Returned value	:		无  
 *********************************************************************************************************/
-int EV_vmMainFlow(const quint8 type,const quint8 *data,const quint8 len)
+int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 {
-    quint8	buf[256] = {0},temp = len;
+    uint8	buf[256] = {0},temp = len;
 	switch(type)
 	{
 		case EV_NAK_VM:
@@ -919,9 +918,9 @@ int EV_vmMainFlow(const quint8 type,const quint8 *data,const quint8 len)
 ** output parameters:		无
 ** Returned value	:		无  
 *********************************************************************************************************/
-int	EV_vmRpt(const quint8 type,const quint8 *data,const quint8 len)
+int	EV_vmRpt(const uint8 type,const uint8 *data,const uint8 len)
 {
-    quint8 ev_type = type;
+    uint8 ev_type = type;
 
 	if(type == EV_POLL)
 	{
@@ -954,10 +953,10 @@ int	EV_vmRpt(const quint8 type,const quint8 *data,const quint8 len)
 
 
 
-int EV_pcTrade(quint8 cabinet,quint8 column,quint8 type,quint32 cost)
+int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost)
 {
-    quint8 buf[20],ix = 0;
-    quint32 temp;
+    uint8 buf[20],ix = 0;
+    uint32 temp;
 	buf[ix++] = cabinet & 0xFF;//pReq->cabinet & 0xFF;
 	buf[ix++] = 2;//pReq->type  & 0xFF;
 	buf[ix++] = column  & 0xFF;//pReq->id  & 0xFF;
@@ -966,26 +965,29 @@ int EV_pcTrade(quint8 cabinet,quint8 column,quint8 type,quint32 cost)
 	temp = EV_amountToVM(cost);
 	buf[ix++] = HUINT16(temp);//pReq->cost / 256;
 	buf[ix++] = LUINT16(temp);//pReq->cost % 256;
-	return EV_pcReqSend(VENDOUT_IND,1,buf,ix);
+
+    return EV_pcReqSend(VENDOUT_IND,1,buf,ix);
 }
 
 
-int EV_pcPayout(quint32 value)
+int EV_pcPayout(int value)
 {
-    quint8 buf[20],ix = 0;
-    quint32 temp = EV_amountToVM(value);
+    uint8 buf[20],ix = 0;
+    uint32 temp = EV_amountToVM(value);
+    EV_LOGI("temp= %d\n",temp);
 	buf[ix++] = 6;//找零指令
-	buf[ix++] = HUINT16(temp);
-	buf[ix++] = LUINT16(temp);
+    buf[ix++] = 0;
+    buf[ix++] = 0;
 	EV_setSubcmd(6);
 	return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
 }
 
 
+
 //直接返回 不用回调
-qint32 EV_cash_control(quint8 flag)
+int32 EV_cash_control(uint8 flag)
 {
-    quint8 buf[20],ix = 0;
+    uint8 buf[20],ix = 0;
     buf[ix++] = 2;
     buf[ix++] = (flag == 0) ? 0 : 1;
     EV_setSubcmd(2);
@@ -993,9 +995,9 @@ qint32 EV_cash_control(quint8 flag)
 }
 
 
-qint32 EV_cabinet_control(quint8 cabinet,quint8 dev,quint8 flag)
+int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag)
 {
-    quint8 buf[20],ix = 0;
+    uint8 buf[20],ix = 0;
     buf[ix++] = 3;
     buf[ix++] = cabinet;
     buf[ix++] = dev;
@@ -1004,9 +1006,9 @@ qint32 EV_cabinet_control(quint8 cabinet,quint8 dev,quint8 flag)
     return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
 }
 
-qint32 EV_set_date(ST_DATE *date)
+int32 EV_set_date(ST_DATE *date)
 {
-    quint8 buf[20],ix = 0;
+    uint8 buf[20],ix = 0;
     buf[ix++] = 17;
     buf[ix++] = date->year / 256;
     buf[ix++] = date->year % 256;

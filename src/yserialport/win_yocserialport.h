@@ -7,10 +7,10 @@
 
 HANDLE winserial_open(char *portName);
 void winserial_close(HANDLE win_handle);
-quint32 winserial_read (HANDLE win_handle,char *pData,quint32 len);
-quint32 winserial_write (HANDLE win_handle,const char* pData, quint32 len);
+uint32 winserial_read (HANDLE win_handle,char *pData,uint32 len);
+uint32 winserial_write (HANDLE win_handle,const char* pData, uint32 len);
 int winserial_setRWBuffer(HANDLE win_handle,DWORD dwInQueue,DWORD dwOutQueue);
-quint32 winserial_bytesAvailable(HANDLE win_handle);
+uint32 winserial_bytesAvailable(HANDLE win_handle);
 void winserial_setBaudRate(HANDLE win_handle, BaudRateType baudRate);
 void winserial_setDataBits(HANDLE win_handle, DataBitsType dataBits);
 void winserial_setStopBits(HANDLE win_handle,StopBitsType stopBits);

@@ -244,7 +244,7 @@ void unixserial_setBaudRate(int fd, BaudRateType baudRate)
 }
 
 
-quint32 unixserial_bytesAvailable(int fd)
+uint32 unixserial_bytesAvailable(int fd)
 {
     static struct timeval timeout={0,1};
     int bytesQueued;
@@ -272,10 +272,10 @@ void unixserial_close(int fd)
 
 
 
-quint32 unixserial_read (int fd,char *pData,quint32 len)
+uint32 unixserial_read (int fd,char *pData,uint32 len)
 {
 
-    quint32 ret ;
+    uint32 ret ;
     ret = read(fd , pData , len); //读取串口
     if(ret<0)
         return 0;
@@ -283,9 +283,9 @@ quint32 unixserial_read (int fd,char *pData,quint32 len)
 }
 
 
-quint32 unixserial_write (int fd,const char* pData, quint32 len)
+uint32 unixserial_write (int fd,const char* pData, uint32 len)
 {
-    quint32 written ;
+    uint32 written ;
     written = write(fd , pData , len);  //写串口
     if(written <0)
     {

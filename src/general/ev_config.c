@@ -3,9 +3,9 @@
 
 
 
-quint16 EV_crcCheck(quint8 *msg,quint8 len)
+uint16 EV_crcCheck(uint8 *msg,uint8 len)
 {
-    quint16 i, j, crc = 0, current = 0;
+    uint16 i, j, crc = 0, current = 0;
         for(i=0;i<len;i++) {
             current = msg[i] << 8;
             for(j=0;j<8;j++) {

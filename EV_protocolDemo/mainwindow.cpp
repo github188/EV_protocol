@@ -33,19 +33,31 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void  __stdcall MainWindow::EV_callBack(int type, const void *ptr)
+
+
+void MainWindow::EV_fun(int type, const void *ptr)
 {
-    if(mainThis){}
     switch(type)
     {
         case EV_SETUP_RPT:
             ST_SETUP *setup = (ST_SETUP *)ptr;
             qDebug()<<"lang:"<<setup->language;
-
+            ui->textEdit->insertPlainText("EV_SETUP_RPT");
             break;
 
     }
+
     qDebug()<<"type="<<type;
+
+}
+
+
+
+void  __stdcall MainWindow::EV_callBack(int type, const void *ptr)
+{
+    if(mainThis)
+        mainThis->EV_fun(type,ptr);
+
 }
 
 void MainWindow::on_pushButton_start_clicked()
@@ -62,5 +74,17 @@ void MainWindow::on_pushButton_start_clicked()
             QMessageBox::warning(this,tr("COM"),tr("Open fail!"),QMessageBox::Yes);
         }
         return;
+    }
+}
+
+void MainWindow::on_pushButton_trade_clicked()
+{
+    typedef int (*EV_trade)(int ,int,int,int);
+
+    EV_trade trade = (EV_trade)lib.resolve("EV_trade");
+    if(trade)
+    {
+        qDebug()<<"Trade:";
+        trade(1,11,1,0);
     }
 }

@@ -28,6 +28,7 @@ LOCAL_C_INCLUDES+=$(TOP_DIR)/ytimer
 LOCAL_C_INCLUDES+=$(TOP_DIR)/yserialport
 LOCAL_C_INCLUDES+=$(TOP_DIR)/general
 LOCAL_C_INCLUDES+=$(TOP_DIR)/EV_api
+LOCAL_C_INCLUDES+=$(TOP_DIR)/cpp_export
 
 
 LOCAL_SRC_FILES += $(LOCAL_PATH)/../com_easivend_evprotocol_EVprotocol.c

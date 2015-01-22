@@ -146,7 +146,7 @@ void EV_timer_stop(ST_TIMER *timer)
 }
 
 
-quint8 EV_timer_start(ST_TIMER *timer,quint32 sec)
+uint8 EV_timer_start(ST_TIMER *timer,uint32 sec)
 {
     if(timer == NULL) return 0;
  //   pthread_mutex_lock(&timer->mutex);

@@ -3,7 +3,7 @@
 
 
 
-quint8 yserial_fdIsNull(const Y_FD fd)
+uint8 yserial_fdIsNull(const Y_FD fd)
 {
 #ifdef EV_WIN32
     return (fd == NULL);
@@ -46,7 +46,7 @@ void yserial_close(Y_FD fd)
 #endif
 }
 
-quint32 yserial_read (Y_FD fd,char *pData,quint32 len)
+uint32 yserial_read (Y_FD fd,char *pData,uint32 len)
 {
 #ifdef EV_WIN32
     return winserial_read(fd,pData,len);
@@ -56,7 +56,7 @@ quint32 yserial_read (Y_FD fd,char *pData,quint32 len)
 }
 
 
-quint32 yserial_write (Y_FD fd,const char* pData, quint32 len)
+uint32 yserial_write (Y_FD fd,const char* pData, uint32 len)
 {
 #ifdef EV_WIN32
     return winserial_write(fd,pData,len);
@@ -66,7 +66,7 @@ quint32 yserial_write (Y_FD fd,const char* pData, quint32 len)
 }
 
 
-int yserial_setRWBuffer(Y_FD fd,quint32 dwInQueue,quint32 dwOutQueue)
+int yserial_setRWBuffer(Y_FD fd,uint32 dwInQueue,uint32 dwOutQueue)
 {
 #ifdef EV_WIN32
     return winserial_setRWBuffer(fd,(DWORD)dwInQueue,(DWORD)dwOutQueue);
@@ -77,7 +77,7 @@ int yserial_setRWBuffer(Y_FD fd,quint32 dwInQueue,quint32 dwOutQueue)
 
 
 
-quint32 yserial_bytesAvailable(Y_FD fd)
+uint32 yserial_bytesAvailable(Y_FD fd)
 {
 #ifdef EV_WIN32
     return winserial_bytesAvailable(fd);

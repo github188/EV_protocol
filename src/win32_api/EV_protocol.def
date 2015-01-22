@@ -13,17 +13,3 @@ Java_com_easivend_evprotocol_EVprotocol_bentoOpen
 Java_com_easivend_evprotocol_EVprotocol_bentoLight
 Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 
-EV_vmcStart
-EV_vmcStop
-EV_trade
-EV_payout
-EV_getStatus
-EV_getRemainAmount
-EV_bentoRegister
-EV_bentoOpen
-EV_bentoRelease
-EV_bentoLight
-EV_bentoCheck
-EV_cashControl
-EV_cabinetControl
-EV_setDate

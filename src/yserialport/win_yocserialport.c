@@ -156,7 +156,7 @@ void winserial_setBaudRate(HANDLE win_handle, BaudRateType baudRate)
 {
     COMMCONFIG config;//串口配置结构体
     long conSize = sizeof(COMMCONFIG);
-    quint32 baud;
+    uint32 baud;
     switch (baudRate)
     {
         case BAUD50:
@@ -190,7 +190,7 @@ void winserial_setBaudRate(HANDLE win_handle, BaudRateType baudRate)
 }
 
 
-quint32 winserial_bytesAvailable(HANDLE win_handle)
+uint32 winserial_bytesAvailable(HANDLE win_handle)
 {
     DWORD Errors;
     COMSTAT Status;
@@ -223,7 +223,7 @@ void winserial_close(HANDLE win_handle)
 
 
 
-quint32 winserial_read (HANDLE win_handle,char *pData,quint32 len)
+uint32 winserial_read (HANDLE win_handle,char *pData,uint32 len)
 {
     DWORD dwRead;
     if (!ReadFile(win_handle,(void*)pData,(DWORD)len,&dwRead,NULL))
@@ -234,7 +234,7 @@ quint32 winserial_read (HANDLE win_handle,char *pData,quint32 len)
 }
 
 
-quint32 winserial_write (HANDLE win_handle,const char* pData, quint32 len)
+uint32 winserial_write (HANDLE win_handle,const char* pData, uint32 len)
 {
     DWORD dwWritten;
     DWORD err;

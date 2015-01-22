@@ -1,4 +1,6 @@
 
+
+
 #ifndef _EVprotocol_H_
 #define _EVprotocol_H_
 
@@ -6,14 +8,139 @@
 extern "C" {
 #endif
 
-
-
+#ifdef  EV_WIN32
 #define EV_EXPORT __declspec(dllexport)
-#ifdef EV_WIN32
 #define EV_API  __stdcall //注意在win32平台下统一采用stdcall标准调用方式
+#elif   EV_UNIX
+#define EV_API
+#define EV_EXPORT __declspec(dllexport)
 #else
 #define EV_API
+#define EV_EXPORT
 #endif
+
+
+#define EV_NA               0x00 //无请求
+#define EV_SETUP_REQ        0x90 //初始化请求
+#define EV_SETUP_RPT 		0x05 //初始化结果返回
+#define EV_INFO_REQ 		0x8C
+#define EV_INFO_RPT 		0x11
+#define EV_ACK_PC           0x80
+#define EV_NAK_PC           0x81 //PC回应NAK
+#define EV_ACK_VM           0x01
+#define EV_NAK_VM           0x02
+#define EV_POLL             0x03
+#define EV_PAYIN_RPT        0x06  //投币报告
+#define EV_COLUMN_REQ       0x8A  //获取货道
+#define EV_COLUMN_RPT       0x0E  //货道报告
+#define EV_TRADE_REQ        0x83
+#define EV_TRADE_RPT        0x08
+#define EV_ACTION_RPT       0x0B
+#define EV_STATE_REQ        0x86
+#define EV_STATE_RPT        0x0D
+#define EV_BUTTON_RPT       0x0C
+#define EV_CONTROL_REQ      0x85
+#define EV_PAYOUT_REQ       0x89
+#define EV_PAYOUT_RPT       0x07
+#define EV_CONTROL_RPT      0xA0
+#define EV_ACTION_REQ       0xA1
+#define EV_ENTER_MANTAIN    0xA2
+#define EV_EXIT_MANTAIN     0xA3
+#define EV_INITING          0xA4
+#define EV_RESTART          0xA5
+#define EV_OFFLINE          0xA6
+#define EV_ONLINE           0xA7
+#define EV_TIMEOUT          0xA8
+#define EV_FAIL             0xA9
+#define EV_EXIT_MANTAIN     0xA3
+
+#if 1
+//目标机32位
+typedef unsigned char       uint8;
+typedef unsigned short      uint16;
+typedef unsigned int        uint32;
+typedef unsigned long       uint64;
+typedef  char               int8;
+typedef  short              int16;
+typedef  int                int32;
+typedef  long               int64;
+#endif
+
+
+
+
+typedef struct _st_cash_{
+    uint8      recv_type;//现金接收器类型
+    uint32     recv_max_value;//现金接收器上限
+    uint32     recv_ch[8];//现金接收器通道面值
+    uint8      change_type;//现金找零器类型
+    uint32     change_ch[8]; //现金找零器通道面值
+
+}ST_CASH;
+
+
+typedef struct _st_card_{
+    uint8 type;
+}ST_CARD;
+
+
+typedef struct _st_bin_{
+    uint8 type;//0关闭 1弹簧 2老式升降机 3升降机+传送带 4升降机+弹簧
+    uint8 addGoods;//补货方式 0手动 1自动
+    uint8 goc;//0关闭出货确认  1开启
+    uint8 light;//照明支持  0不支持 1支持
+    uint8 hot;//加热支持 0不支持 1支持
+    uint8 cool;//制冷支持 0不支持 1支持
+    uint8 keyboard;//按键支持 0不支持 1支持
+    uint8 compressor;// 压缩机支持 0不支持 1支持
+}ST_BIN;
+
+
+typedef struct _st_setup_{
+    uint8       language;    //主控板语言版本 0中文 1英文
+    uint8       vmRatio;     //VMC主控板比例因子 1表示分 10表示角  100表示元(上位机忽略)
+    uint8       payoutTime;  //超时退币  单位秒  255 表示不退币
+    uint8       multBuy;     //多次购买
+    uint8       forceBuy;    //强制购买
+    uint8       humanSensor; //是否支持人体接近感应
+    uint8       gameButton;  //是否支持游戏按键
+    ST_CASH     bill;       //纸币器结构体
+    ST_CASH     coin;       //硬币器结构体
+    ST_CARD     card;       //读卡器结构体
+    ST_BIN      bin;        //主柜结构体
+    ST_BIN      subBin;     //副柜结构体
+}ST_SETUP;
+
+
+typedef struct _st_trade_{
+    uint8 cabinet;
+    uint8 column;
+    uint8 result;
+    uint8 type;
+    uint8 cost;
+    uint32 remainAmount;
+    uint8 remainCount;
+}ST_TRADE;
+
+
+typedef struct _st_state_{
+    uint8 state;//VMC当前状态
+    uint8 bill;
+    uint8 coin;
+    uint8 cabinet;
+    uint8 billch[8];//纸币找零量
+    uint8 coinch[8];//硬币找零量
+
+}ST_STATE;
+
+
+
+
+#ifndef EV_ANDROID  //安卓平台下不导出这些接口
+
+
+
+
 
 
 /*********************************************************************************************************
@@ -25,7 +152,7 @@ extern "C" {
 *********************************************************************************************************/
 typedef void (EV_API *EV_CALLBACK_HANDLE)(int type,const void *ptr);
 
-
+#if 0
 
 
 
@@ -58,8 +185,8 @@ EV_EXPORT int   EV_API  EV_cashControl(int flag);
 EV_EXPORT int   EV_API  EV_cabinetControl(int cabinet, int dev, int flag);
 EV_EXPORT int   EV_API  EV_setDate(const void *date);
 
-
-
+#endif
+#endif
 #ifdef __cplusplus
 }
 #endif

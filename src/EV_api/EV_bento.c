@@ -39,10 +39,10 @@ int EV_bento_closeSerial()
 }
 
 
-quint8 EV_bento_recv(quint8 *rdata,quint8 *rlen)
+uint8 EV_bento_recv(uint8 *rdata,uint8 *rlen)
 {
-    quint8 timeout = 100,buf[10]= {0},len = 0,temp,startFlag = 0;
-    quint16 crc;
+    uint8 timeout = 100,buf[10]= {0},len = 0,temp,startFlag = 0;
+    uint16 crc;
 	*rlen = 0;
 	while(timeout--)
 	{
@@ -82,10 +82,10 @@ quint8 EV_bento_recv(quint8 *rdata,quint8 *rlen)
 }
 
 
-int EV_bento_send(quint8 cmd,quint8 cabinet,quint8 arg,quint8 *data)
+int EV_bento_send(uint8 cmd,uint8 cabinet,uint8 arg,uint8 *data)
 {
-    quint8 buf[20] = {0},len = 0,ret,rbuf[20] = {0};
-    quint16 crc;
+    uint8 buf[20] = {0},len = 0,ret,rbuf[20] = {0};
+    uint16 crc;
 	buf[len++] = EV_BENTO_HEAD;
 	buf[len++] = 0x07;
 	buf[len++] = cabinet - 1;
@@ -143,7 +143,7 @@ int EV_bento_open(int cabinet,int box)
 }
 
 
-int EV_bento_light(int cabinet,quint8 flag)
+int EV_bento_light(int cabinet,uint8 flag)
 {
 	int ret = 0;
 	if(cabinet <= 0)
@@ -156,7 +156,7 @@ int EV_bento_light(int cabinet,quint8 flag)
 int EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
 {
 	int ret = 0;
-    quint8 buf[20] = {0},i;
+    uint8 buf[20] = {0},i;
 	if(st_bento == NULL) return 0;
 	if(cabinet <= 0)
 		return 0;

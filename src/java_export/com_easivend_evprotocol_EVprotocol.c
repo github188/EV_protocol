@@ -12,7 +12,8 @@
 #include "timer.h"
 
 
-#if EV_ANDROID
+
+#ifdef EV_ANDROID
 #include<android/log.h>
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
@@ -87,25 +88,25 @@ json_t *JNI_setup_rpt(const void *ptr)
     JNI_json_insert_int(entry,"multBuy",setup->multBuy);
     JNI_json_insert_int(entry,"forceBuy",setup->forceBuy);
 
-    JNI_json_insert_int(sub,"Recvtype",setup->bill.recvType);
-    JNI_json_insert_int(sub,"Recvch1",setup->bill.recvChannel[0]);
-    JNI_json_insert_int(sub,"Recvch2",setup->bill.recvChannel[1]);
-    JNI_json_insert_int(sub,"Recvch3",setup->bill.recvChannel[2]);
-    JNI_json_insert_int(sub,"Recvch4",setup->bill.recvChannel[3]);
-    JNI_json_insert_int(sub,"Recvch5",setup->bill.recvChannel[4]);
-    JNI_json_insert_int(sub,"Recvch6",setup->bill.recvChannel[5]);
-    JNI_json_insert_int(sub,"Recvch7",setup->bill.recvChannel[6]);
-    JNI_json_insert_int(sub,"Recvch8",setup->bill.recvChannel[7]);
+    JNI_json_insert_int(sub,"Recvtype",setup->bill.recv_type);
+    JNI_json_insert_int(sub,"Recvch1",setup->bill.recv_ch[0]);
+    JNI_json_insert_int(sub,"Recvch2",setup->bill.recv_ch[1]);
+    JNI_json_insert_int(sub,"Recvch3",setup->bill.recv_ch[2]);
+    JNI_json_insert_int(sub,"Recvch4",setup->bill.recv_ch[3]);
+    JNI_json_insert_int(sub,"Recvch5",setup->bill.recv_ch[4]);
+    JNI_json_insert_int(sub,"Recvch6",setup->bill.recv_ch[5]);
+    JNI_json_insert_int(sub,"Recvch7",setup->bill.recv_ch[6]);
+    JNI_json_insert_int(sub,"Recvch8",setup->bill.recv_ch[7]);
 
-    JNI_json_insert_int(sub,"Changertype",setup->bill.changeType);
-    JNI_json_insert_int(sub,"Changerch1",setup->bill.changeChannel[0]);
-    JNI_json_insert_int(sub,"Changerch2",setup->bill.changeChannel[1]);
-    JNI_json_insert_int(sub,"Changerch3",setup->bill.changeChannel[2]);
-    JNI_json_insert_int(sub,"Changerch4",setup->bill.changeChannel[3]);
-    JNI_json_insert_int(sub,"Changerch5",setup->bill.changeChannel[4]);
-    JNI_json_insert_int(sub,"Changerch6",setup->bill.changeChannel[5]);
-    JNI_json_insert_int(sub,"Changerch7",setup->bill.changeChannel[6]);
-    JNI_json_insert_int(sub,"Changerch8",setup->bill.changeChannel[7]);
+    JNI_json_insert_int(sub,"Changertype",setup->bill.change_type);
+    JNI_json_insert_int(sub,"Changerch1",setup->bill.change_ch[0]);
+    JNI_json_insert_int(sub,"Changerch2",setup->bill.change_ch[1]);
+    JNI_json_insert_int(sub,"Changerch3",setup->bill.change_ch[2]);
+    JNI_json_insert_int(sub,"Changerch4",setup->bill.change_ch[3]);
+    JNI_json_insert_int(sub,"Changerch5",setup->bill.change_ch[4]);
+    JNI_json_insert_int(sub,"Changerch6",setup->bill.change_ch[5]);
+    JNI_json_insert_int(sub,"Changerch7",setup->bill.change_ch[6]);
+    JNI_json_insert_int(sub,"Changerch8",setup->bill.change_ch[7]);
 
     label = json_new_string("Bill");
     json_insert_child(label,sub);
@@ -113,24 +114,24 @@ json_t *JNI_setup_rpt(const void *ptr)
 
 
     sub = json_new_object();
-    JNI_json_insert_int(sub,"Recvtype",setup->coin.recvType);
-    JNI_json_insert_int(sub,"Recvch1",setup->coin.recvChannel[0]);
-    JNI_json_insert_int(sub,"Recvch2",setup->coin.recvChannel[1]);
-    JNI_json_insert_int(sub,"Recvch3",setup->coin.recvChannel[2]);
-    JNI_json_insert_int(sub,"Recvch4",setup->coin.recvChannel[3]);
-    JNI_json_insert_int(sub,"Recvch5",setup->coin.recvChannel[4]);
-    JNI_json_insert_int(sub,"Recvch6",setup->coin.recvChannel[5]);
-    JNI_json_insert_int(sub,"Recvch7",setup->coin.recvChannel[6]);
-    JNI_json_insert_int(sub,"Recvch8",setup->coin.recvChannel[7]);
-    JNI_json_insert_int(sub,"Changertype",setup->coin.changeType);
-    JNI_json_insert_int(sub,"Changerch1",setup->coin.changeChannel[0]);
-    JNI_json_insert_int(sub,"Changerch2",setup->coin.changeChannel[1]);
-    JNI_json_insert_int(sub,"Changerch3",setup->coin.changeChannel[2]);
-    JNI_json_insert_int(sub,"Changerch4",setup->coin.changeChannel[3]);
-    JNI_json_insert_int(sub,"Changerch5",setup->coin.changeChannel[4]);
-    JNI_json_insert_int(sub,"Changerch6",setup->coin.changeChannel[5]);
-    JNI_json_insert_int(sub,"Changerch7",setup->coin.changeChannel[6]);
-    JNI_json_insert_int(sub,"Changerch8",setup->coin.changeChannel[7]);
+    JNI_json_insert_int(sub,"Recvtype",setup->coin.recv_type);
+    JNI_json_insert_int(sub,"Recvch1",setup->coin.recv_ch[0]);
+    JNI_json_insert_int(sub,"Recvch2",setup->coin.recv_ch[1]);
+    JNI_json_insert_int(sub,"Recvch3",setup->coin.recv_ch[2]);
+    JNI_json_insert_int(sub,"Recvch4",setup->coin.recv_ch[3]);
+    JNI_json_insert_int(sub,"Recvch5",setup->coin.recv_ch[4]);
+    JNI_json_insert_int(sub,"Recvch6",setup->coin.recv_ch[5]);
+    JNI_json_insert_int(sub,"Recvch7",setup->coin.recv_ch[6]);
+    JNI_json_insert_int(sub,"Recvch8",setup->coin.recv_ch[7]);
+    JNI_json_insert_int(sub,"Changertype",setup->coin.change_type);
+    JNI_json_insert_int(sub,"Changerch1",setup->coin.change_ch[0]);
+    JNI_json_insert_int(sub,"Changerch2",setup->coin.change_ch[1]);
+    JNI_json_insert_int(sub,"Changerch3",setup->coin.change_ch[2]);
+    JNI_json_insert_int(sub,"Changerch4",setup->coin.change_ch[3]);
+    JNI_json_insert_int(sub,"Changerch5",setup->coin.change_ch[4]);
+    JNI_json_insert_int(sub,"Changerch6",setup->coin.change_ch[5]);
+    JNI_json_insert_int(sub,"Changerch7",setup->coin.change_ch[6]);
+    JNI_json_insert_int(sub,"Changerch8",setup->coin.change_ch[7]);
     label = json_new_string("Coin");
     json_insert_child(label,sub);
     json_insert_child(entry,label);
@@ -186,8 +187,7 @@ static void JNI_callBack(const int type,const void *ptr)
 {
 	jstring msg;
 	char *text;
-	unsigned int temp;
-    quint8 *data;
+    uint8 *data;
 	ST_VM_DATA *vm_ptr;
     json_t *root = NULL, *entry = NULL, *label;
 
@@ -274,7 +274,7 @@ static void JNI_callBack(const int type,const void *ptr)
 			root = json_new_object();
     		entry = json_new_object();
 			JNI_json_insert_str(entry,JSON_TYPE,"EV_TIMEOUT");
-            data = (quint8 *)ptr;
+            data = (uint8 *)ptr;
 			JNI_json_insert_int(entry,"cmd",*data);
 			label = json_new_string(JSON_HEAD);
 			json_insert_child(label,entry);
@@ -284,14 +284,14 @@ static void JNI_callBack(const int type,const void *ptr)
 			root = json_new_object();
     		entry = json_new_object();
 			JNI_json_insert_str(entry,JSON_TYPE,"EV_NA");
-            data = (quint8 *)ptr;
+            data = (uint8 *)ptr;
 			JNI_json_insert_int(entry,"cmd",*data);			
 			label = json_new_string(JSON_HEAD);
 			json_insert_child(label,entry);
 			json_insert_child(root,label);
 			break;
 		case EV_STATE_RPT:
-            data = (quint8 *)ptr;
+            data = (uint8 *)ptr;
 			root = json_new_object();
     		entry = json_new_object();
 			JNI_json_insert_str(entry,JSON_TYPE,"EV_STATE_RPT");
@@ -301,7 +301,7 @@ static void JNI_callBack(const int type,const void *ptr)
 			json_insert_child(root,label);
 			break;
 		case EV_BUTTON_RPT:// type 表示 按键类型 0 游戏 1货道  2退币  cabinet 柜号 value 具体值(只有货道按键有意义)
-            data = (quint8 *)ptr;
+            data = (uint8 *)ptr;
 			root = json_new_object();
     		entry = json_new_object();
 			JNI_json_insert_str(entry,JSON_TYPE,"EV_BUTTON_RPT");
@@ -448,7 +448,6 @@ JNIEXPORT void JNICALL
 Java_com_easivend_evprotocol_EVprotocol_vmcStop
   (JNIEnv *env, jobject obj)
 {
-    env = env; obj = obj;
 	LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
 	g_threadStop = 1;
 }
@@ -463,8 +462,8 @@ Java_com_easivend_evprotocol_EVprotocol_trade
   (JNIEnv *env, jobject obj,jint cabinet, jint column, jint type, jint cost)
 {
 	jint ret;
-    env = env; obj = obj;
-	ret = EV_pcTrade(cabinet & 0xFF,column & 0xFF,type & 0xFF,cost & 0xFFFF);
+   // LOGI("cabinet=%d coulmn=%d type =%d  cost=%d",cabinet,column,type,cost);
+    ret = EV_pcTrade(cabinet,column,type,cost);
 	return ret;
 }
 
@@ -474,8 +473,8 @@ Java_com_easivend_evprotocol_EVprotocol_payout
   (JNIEnv *env, jobject cls,jlong value)
 {
 	jint ret;
-    env = env; cls = cls;
-	ret = EV_pcPayout(value & 0xFFFF);
+    //uint32 temp = (uint32)value;
+    ret = EV_pcPayout(1);
 	return ret;
 }
 
@@ -485,7 +484,6 @@ Java_com_easivend_evprotocol_EVprotocol_payout
 JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_getStatus
   (JNIEnv *env, jobject obj)
 {
-    env = env; obj = obj;
 	return EV_pcReqSend(GET_STATUS,0,NULL,0);
 }
 
@@ -494,7 +492,6 @@ JNIEXPORT jlong JNICALL Java_com_easivend_evprotocol_EVprotocol_getRemainAmount
   (JNIEnv *env, jobject obj)
 {
 	jlong value = 0;
-    env = env; obj = obj;
 	value = EV_vmGetAmount();
 	return value;
 }

@@ -22,10 +22,10 @@ int unixserial_setFlowControl(int fd,FlowType flow);
 int unixserial_setStopBits(int fd,StopBitsType stopBits);
 int unixserial_setParity(int fd,ParityType parity);
 int unixserial_setDataBits(int fd,int databits);
-quint32 unixserial_bytesAvailable(int fd);
+uint32 unixserial_bytesAvailable(int fd);
 void unixserial_close(int fd);
-quint32 unixserial_read (int fd,char *pData,quint32 len);
-quint32 unixserial_write (int fd,const char* pData, quint32 len);
+uint32 unixserial_read (int fd,char *pData,uint32 len);
+uint32 unixserial_write (int fd,const char* pData, uint32 len);
 void unixserial_clear(int fd);
 
 

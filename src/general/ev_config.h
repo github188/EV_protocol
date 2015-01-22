@@ -1,18 +1,6 @@
 #ifndef _EV_CONFIG_H_
 #define _EV_CONFIG_H_
-
-
-
-typedef unsigned char       quint8;
-typedef unsigned short      quint16;
-typedef unsigned int        quint32;
-typedef unsigned long       quint64;
-
-typedef  char       qint8;
-typedef  short      qint16;
-typedef  int        qint32;
-typedef  long       qint64;
-
+#include "EVprotocol.h"
 
 //适用于安卓的特定定位输出
 #if EV_ANDROID
@@ -35,7 +23,7 @@ typedef  long       qint64;
 #define EV_LOGFLOW(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 
 
-#else
+#elif 1
 #define EV_LOGD(...)    printf(__VA_ARGS__)
 #define EV_LOGI(...)    printf(__VA_ARGS__)
 #define EV_LOGW(...)    printf(__VA_ARGS__)
@@ -51,6 +39,22 @@ typedef  long       qint64;
 #define EV_LOGTASK(...) printf(__VA_ARGS__)
 #define EV_LOGFLOW(...) printf(__VA_ARGS__)
 
+#else
+#define EV_LOGD(...)    do{}while(0)
+#define EV_LOGI(...)    do{}while(0)
+#define EV_LOGW(...)    do{}while(0)
+#define EV_LOGE(...)    do{}while(0)
+#define EV_LOGI1(...)   do{}while(0)
+#define EV_LOGI2(...)   do{}while(0)
+#define EV_LOGI3(...)   do{}while(0)
+#define EV_LOGI4(...)   do{}while(0)
+#define EV_LOGI5(...)   do{}while(0)
+#define EV_LOGI6(...)   do{}while(0)
+#define EV_LOGI7(...)   do{}while(0)
+#define EV_LOGCOM(...)  do{}while(0)
+#define EV_LOGTASK(...) do{}while(0)
+#define EV_LOGFLOW(...) do{}while(0)
+
 #endif
 
 
@@ -58,22 +62,21 @@ typedef  long       qint64;
 /*********************************************************************************************************
 **定义通用宏函数
 *********************************************************************************************************/
-
 #define HUINT16(v)   	(((v) >> 8) & 0xFF)
 #define LUINT16(v)   	((v) & 0xFF)
-#define INTEG16(h,l)  	(((quint32)h << 8) | l)
-#define H0UINT32(n)				(quint8)(((n) >> 24) & 0xff) //32位数值第一个高8位
-#define H1UINT32(n)				(quint8)(((n) >> 16) & 0xff) //32位数值第二个高8位
-#define L0UINT32(n)				(quint8)(((n) >> 8 ) & 0xff) //32位数值第一个低8位
-#define L1UINT32(n)				(quint8)(((n) >> 0 ) & 0xff)         //32位数值第二个低8位
-#define INTEG32(h0,l0,h1,l1)	(quint32)(((quint32)(h0) << 24)| \
-                                               ((quint32)(l0) << 16)|  \
-                                               ((quint32)(h1) << 8 )|((l1) & 0xff))
+#define INTEG16(h,l)  	(((uint32)h << 8) | l)
+#define H0UINT32(n)				(uint8)(((n) >> 24) & 0xff) //32位数值第一个高8位
+#define H1UINT32(n)				(uint8)(((n) >> 16) & 0xff) //32位数值第二个高8位
+#define L0UINT32(n)				(uint8)(((n) >> 8 ) & 0xff) //32位数值第一个低8位
+#define L1UINT32(n)				(uint8)(((n) >> 0 ) & 0xff)         //32位数值第二个低8位
+#define INTEG32(h0,l0,h1,l1)	(uint32)(((uint32)(h0) << 24)| \
+                                               ((uint32)(l0) << 16)|  \
+                                               ((uint32)(h1) << 8 )|((l1) & 0xff))
 							    						    
 									
 
 
 
-quint16 EV_crcCheck(quint8 *msg,quint8 len);
+uint16 EV_crcCheck(uint8 *msg,uint8 len);
 
 #endif

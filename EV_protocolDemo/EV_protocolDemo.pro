@@ -19,9 +19,12 @@ MOC_DIR = ../build/moc
 UI_DIR = ../build/ui
 
 
+INCLUDEPATH += ../src/cpp_export
+
 SOURCES += main.cpp\
         mainwindow.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+        ../src/cpp_export/EVprotocol.h
 
 FORMS    += mainwindow.ui

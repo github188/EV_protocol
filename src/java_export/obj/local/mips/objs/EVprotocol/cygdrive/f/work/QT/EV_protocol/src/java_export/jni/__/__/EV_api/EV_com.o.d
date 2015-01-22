@@ -72,6 +72,7 @@
  /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/termios.h \
  /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/linux/termios.h \
  /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/asm/termios.h \
+ /cygdrive/f/work/QT/EV_protocol/src/java_export/jni/../../cpp_export/EVprotocol.h \
  /cygdrive/f/work/QT/EV_protocol/src/java_export/jni/../../ytimer/timer.h \
  /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/pthread.h \
  /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/time.h \
@@ -220,6 +221,8 @@
 /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/linux/termios.h:
 
 /cygdrive/f/work/JAVA/android-ndk-r9d/platforms/android-9/arch-mips/usr/include/asm/termios.h:
+
+/cygdrive/f/work/QT/EV_protocol/src/java_export/jni/../../cpp_export/EVprotocol.h:
 
 /cygdrive/f/work/QT/EV_protocol/src/java_export/jni/../../ytimer/timer.h:
 
