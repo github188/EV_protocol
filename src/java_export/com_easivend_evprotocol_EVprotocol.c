@@ -484,7 +484,7 @@ Java_com_easivend_evprotocol_EVprotocol_payout
 JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_getStatus
   (JNIEnv *env, jobject obj)
 {
-	return EV_pcReqSend(GET_STATUS,0,NULL,0);
+    return EV_pcRequest(GET_STATUS,0,NULL,0);
 }
 
 

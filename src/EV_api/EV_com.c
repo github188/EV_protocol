@@ -115,6 +115,8 @@ uint32 EV_amountFromVM(const uint32 value)
 //将金额按VM比例 转换
 uint32 EV_amountToVM(const uint32 value)
 {
+    if(st_vm.setup.vmRatio == 0)
+        return 0;
     uint32 temp = value / st_vm.setup.vmRatio;
 	return temp;
 }
@@ -464,6 +466,26 @@ int EV_recv()
 }
 
 
+/*********************************************************************************************************
+** Function name:     EV_pcRequest
+** Descriptions:      上位PC机发送数据请求
+** input parameters:   type 发送的数据请求类型 不能为零
+** output parameters:   无
+** Returned value:    0 失败 1成功
+*********************************************************************************************************/
+uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
+{
+    uint8 state = EV_getVmState();
+    if(state == EV_STATE_DISCONNECT || state == EV_STATE_INITTING)
+    {
+        EV_callbackhandle(EV_STATE_RPT,&state);
+        return 0;
+    }
+    else
+        return EV_pcReqSend(type,ackBack,data,len);
+}
+
+
 
 
 /*********************************************************************************************************
@@ -494,7 +516,7 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 		sendbuf[ix++] = data[i];
 	}
 	EV_set_pc_cmd(type);
-    //EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
+    EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
         EV_timer_start(&timer_pc,EV_TIMEROUT_PC_LONG);
 	else						//一般为3秒
@@ -966,7 +988,7 @@ int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost)
 	buf[ix++] = HUINT16(temp);//pReq->cost / 256;
 	buf[ix++] = LUINT16(temp);//pReq->cost % 256;
 
-    return EV_pcReqSend(VENDOUT_IND,1,buf,ix);
+    return EV_pcRequest(VENDOUT_IND,1,buf,ix);
 }
 
 
@@ -979,7 +1001,7 @@ int EV_pcPayout(int value)
     buf[ix++] = 0;
     buf[ix++] = 0;
 	EV_setSubcmd(6);
-	return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
+    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
 
@@ -991,7 +1013,7 @@ int32 EV_cash_control(uint8 flag)
     buf[ix++] = 2;
     buf[ix++] = (flag == 0) ? 0 : 1;
     EV_setSubcmd(2);
-    return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
+    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
 
@@ -1003,7 +1025,7 @@ int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag)
     buf[ix++] = dev;
     buf[ix++] = (flag == 0) ? 0 : 1;
     EV_setSubcmd(3);
-    return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
+    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
 int32 EV_set_date(ST_DATE *date)
@@ -1020,7 +1042,7 @@ int32 EV_set_date(ST_DATE *date)
     buf[ix++] = date->week;
 
     EV_setSubcmd(17);
-    return EV_pcReqSend(EV_CONTROL_REQ,1,buf,ix);
+    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
 

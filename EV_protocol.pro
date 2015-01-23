@@ -53,8 +53,8 @@ HEADERS += \
 
 #win32平台下的处理
 win32{
-DEF_FILE +=src/win32_api/EV_protocol.def
-DEFINES += EV_WIN32
+DEFINES += EV_WIN32 #定义win32下的编译环境
+DEF_FILE +=src/win32_api/EV_protocol.def #只有win32才用的接口导出定位符
 #QMAKE_CFLAGS +=--enable-stdcall-fixup
 SOURCES += \
     src/yserialport/win_yocserialport.c \
@@ -65,11 +65,12 @@ HEADERS += \
 
 
 unix{
+DEFINES += EV_UNIX  #定义linux下的编译环境
+
 SOURCES += \
     src/yserialport/unix_yocserialport.c
 HEADERS += \
     src/yserialport/unix_yocserialport.h
-DEFINES += EV_UNIX
 }
 
 

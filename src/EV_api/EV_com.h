@@ -104,6 +104,7 @@ void EV_task();
 uint32 EV_vmGetAmount();
 int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost);
 int EV_pcPayout(int value);
+uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
 int32 EV_set_date(ST_DATE *date);
 int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag);
 int32 EV_cash_control(uint8 flag);

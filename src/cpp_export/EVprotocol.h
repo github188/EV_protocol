@@ -54,7 +54,7 @@ extern "C" {
 #define EV_FAIL             0xA9
 #define EV_EXIT_MANTAIN     0xA3
 
-#if 1
+
 //目标机32位
 typedef unsigned char       uint8;
 typedef unsigned short      uint16;
@@ -64,7 +64,6 @@ typedef  char               int8;
 typedef  short              int16;
 typedef  int                int32;
 typedef  long               int64;
-#endif
 
 
 

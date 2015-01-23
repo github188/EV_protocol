@@ -107,7 +107,7 @@ int EV_API EV_payout(long value)
 
 int EV_API EV_getStatus()
 {
-    return EV_pcReqSend(GET_STATUS,0,NULL,0);
+    return EV_pcRequest(GET_STATUS,0,NULL,0);
 }
 
 
