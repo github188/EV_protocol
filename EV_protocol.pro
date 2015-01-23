@@ -58,9 +58,11 @@ DEF_FILE +=src/win32_api/EV_protocol.def #只有win32才用的接口导出定位
 #QMAKE_CFLAGS +=--enable-stdcall-fixup
 SOURCES += \
     src/yserialport/win_yocserialport.c \
+    src/general/LOGC.c
 
 HEADERS += \
     src/yserialport/win_yocserialport.h \
+    src/general/LOGC.h
 }
 
 

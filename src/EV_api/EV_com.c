@@ -8,12 +8,8 @@
 #include "EV_com.h"
 #include "timer.h"
 #include "ev_config.h"
-
 static uint8 recvbuf[512],sendbuf[512];
 static uint8 snNo = 0;
-
-#define LOG_STYLES_HELLO	( LOG_STYLE_DATETIMEMS | LOG_STYLE_LOGLEVEL | LOG_STYLE_PID | LOG_STYLE_TID | LOG_STYLE_SOURCE | LOG_STYLE_FORMAT | LOG_STYLE_NEWLINE )
-
 
 
 static ST_VM_DATA st_vm; 
@@ -23,7 +19,8 @@ volatile uint8 pcType,pcsubType;//PC请求类型 0表示无请求标志空闲
 volatile uint8 pcFlag;//VMC 0空闲 1需要发送请求  2正在处理请求
 
 static uint8 vm_state = EV_STATE_DISCONNECT,last_vm_state = EV_STATE_DISCONNECT;
-static Y_FD vmc_fd;
+static Y_FD  vmc_fd;
+static char  vmc_port[128] = {0};
 
 EV_callBack EV_callBack_fun = NULL;
 
@@ -116,7 +113,7 @@ uint32 EV_amountFromVM(const uint32 value)
 uint32 EV_amountToVM(const uint32 value)
 {
     if(st_vm.setup.vmRatio == 0)
-        return 0;
+         st_vm.setup.vmRatio = 10;
     uint32 temp = value / st_vm.setup.vmRatio;
 	return temp;
 }
@@ -204,7 +201,7 @@ void EV_heart_ISR(void)
 void EV_pcTimer_ISR(void)//PC请求超时函数
 {
 	EV_set_pc_cmd(EV_NA);
-	EV_LOGI1("PC request timeout...!!\n");
+    EV_LOGI("PC request timeout...!!\n");
 	if(EV_getVmState() == EV_STATE_INITTING)
 	{
 		EV_vmMainFlow(EV_OFFLINE, NULL,0);
@@ -235,6 +232,7 @@ void EV_COMLOG(int type ,uint8 *data)
     uint16 i;
     for(i = 0;i < (data[1] + 2);i++)
 		sprintf(&buf[i*3],"%02x ",data[i]);
+
 	if(type == 1)
 		EV_LOGCOM("VM-->PC[%d]:%s\n",data[1],buf);
 	else 
@@ -413,12 +411,11 @@ int EV_recv()
     uint16 crc;
 
     if(!yserial_bytesAvailable(vmc_fd))
-	//if(!EV_getCh((char *)&ch))
 		return 0;
 	EV_getCh((char *)&ch);//HEAD 接受包?
 	if(ch != HEAD_EF)
     {
-    	//EV_LOGCOM("EV_recv:%02x != %02x\n",ch,HEAD_EF);
+        //EV_LOGCOM("EV_recv:%02x != %02x\n",ch,HEAD_EF);
         yserial_clear(vmc_fd);
         return 0;
     }
@@ -475,14 +472,20 @@ int EV_recv()
 *********************************************************************************************************/
 uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 {
-    uint8 state = EV_getVmState();
-    if(state == EV_STATE_DISCONNECT || state == EV_STATE_INITTING)
+    uint8 temp = EV_getVmState();
+    if(temp == EV_STATE_DISCONNECT || temp == EV_STATE_INITTING)
     {
-        EV_callbackhandle(EV_STATE_RPT,&state);
+        EV_callbackhandle(EV_STATE_RPT,&temp);
         return 0;
     }
-    else
-        return EV_pcReqSend(type,ackBack,data,len);
+
+    if(EV_get_pc_flag() != PC_REQ_IDLE)
+    {
+        temp = EV_get_pc_cmd();
+        EV_callbackhandle(EV_BUSY,&temp);
+        return 0;
+    }
+    return EV_pcReqSend(type,ackBack,data,len);
 }
 
 
@@ -559,12 +562,8 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
     temp = temp;
 
     setup->language  = data[index++];//language
-
     setup->payoutTime = data[index++];//pay timeout
-	
     setup->vmRatio = data[index++];
-    //setup->vmRatio = 10;//目前默认小数点为1
-
     //特征值 4个字节 前3个字节预留
     index += 3;
 
@@ -584,7 +583,8 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
 	{
         setup->bill.recv_ch[i] = EV_pcAnalysisAmount(data[index++]);
 	}
-    setup->bill.change_type = data[index++];
+
+    setup->bill.change_type = data[index++];  
 	for(i = 0;i < 8;i++)
 	{
         setup->bill.change_ch[i] = EV_pcAnalysisAmount(data[index++]);
@@ -603,20 +603,20 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
 	for(i = 0;i < 8;i++)
 	{
         setup->coin.change_ch[i] = EV_pcAnalysisAmount(data[index++]);
+        if(setup->coin.change_type == 2)//MDB
+            setup->coin.change_ch[i] = setup->coin.recv_ch[i];
 	}
 
-    setup->card.type = data[index++];
-    temp = data[index++];
-    temp = data[index++];
-    temp = data[index++];
-    temp = data[index++];
-    temp = data[index++];
 
-    temp = data[index++];
+    setup->card.type = data[index++];
+
+   // temp = data[index++];//reserv
 
     setup->bin.type =  data[index++];
 
-
+    temp = data[index++];
+    temp = data[index++];
+    temp = data[index++];
 
 
     temp = data[index++];
@@ -625,14 +625,13 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
     setup->bin.compressor = (temp >> 2) & 0x01;
     setup->bin.light = (temp >> 3) & 0x01;
     setup->bin.hot = (temp >> 4) & 0x01;
-    temp = data[index++];
-    temp = data[index++];
-    temp = data[index++];
+
 
 
     setup->subBin.type =  data[index++];
-
-
+    temp = data[index++];
+    temp = data[index++];
+    temp = data[index++];
 
     temp = data[index++];
     setup->subBin.addGoods = temp & 0x01;
@@ -640,9 +639,7 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
     setup->subBin.compressor = (temp >> 2) & 0x01;
     setup->subBin.light = (temp >> 3) & 0x01;
     setup->subBin.hot = (temp >> 4) & 0x01;
-    temp = data[index++];
-    temp = data[index++];
-    temp = data[index++];
+
 	
 	
 }
@@ -726,7 +723,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 				EV_set_pc_cmd(EV_NA);
 				EV_LOGFLOW("EV_NA\n");
 				temp = EV_get_pc_cmd();
-				EV_callbackhandle(EV_NA,&temp);
+                EV_callbackhandle(EV_NAK_VM,&temp);
 			}
 			break;
 		case EV_TIMEOUT:
@@ -739,7 +736,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
         	{
         		EV_set_pc_cmd(EV_NA);
         		EV_setVmState(EV_STATE_INITTING);	
-				EV_LOGFLOW("EV_connected,start to init....\n");
+                EV_LOGFLOW("EV_connected,Start to init....\n");
 				EV_callbackhandle(EV_INITING,recvbuf);
         	}
         	EV_callbackhandle(EV_SETUP_REQ,recvbuf);
@@ -1053,7 +1050,7 @@ int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopb
 {
     Y_FD fd = yserial_open(portName);
     if (yserial_fdIsNull(fd)){
-			EV_LOGE("EV_openSerialPort:oepn %s failed\n",portName);
+            EV_LOGE("Open [%s] failed...\n",portName);
 			return -1;
 	}
     yserial_setParity(fd,parity);
@@ -1064,7 +1061,9 @@ int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopb
     yserial_clear(fd);
 	vmc_fd = fd;
 
-    EV_LOGI4("EV_openSerialPort:Serial[%s] open suc\n",portName);
+    EV_LOGI("Open [%s] suc...\n",portName);
+    memset(vmc_port,0,sizeof(vmc_port));
+    sprintf(vmc_port,portName);
     return 1;
 }
 
@@ -1073,7 +1072,7 @@ int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopb
 int EV_closeSerialPort()
 {
     yserial_close(vmc_fd);
-    EV_LOGI4("EV_closeSerialPort:closed...\n");
+    EV_LOGI("[%s] Closed...\n",vmc_port);
     return 1;
 }
 
@@ -1082,12 +1081,13 @@ int EV_closeSerialPort()
 int EV_register(EV_callBack callBack)
 {
     int ret;
+    SetLogFile( "ev.log" , getenv("HOME") );
+    SetLogLevel( LOGLEVEL_DEBUG );
 	if(callBack == NULL)
 	{
 		EV_LOGW("The callback is NULL.....\n");
 	}
 	EV_callBack_fun = callBack;
-
     timer_vmc.isr = (EV_timerISR)EV_heart_ISR;
     ret = EV_timer_register(&timer_vmc);
     if(ret < 0)
@@ -1104,35 +1104,9 @@ int EV_register(EV_callBack callBack)
 		return -1;
 	}	
 	EV_setVmState(EV_STATE_DISCONNECT);
+    EV_set_pc_cmd(EV_NA);
     st_vm.setup.vmRatio = 10;
-
-
-    EV_LOGI7("EV_register OK.....\n");
-
-
-
-	
-#if 0
-	//创建文件
-	log_fd = CreateLogHandle() ;
-	if( log_fd == NULL )
-	{
-		EV_callBack_fun(3,"CreateLogHandle fail/////////////////////");
-		return -1;
-	}
-	EV_callBack_fun(3,"CreateLogHandle:suc111111111111111111111111111111111");
-	SetLogOutput(log_fd, LOG_OUTPUT_FILE , "./ev_test.log" , LOG_NO_OUTPUTFUNC );
-	SetLogLevel( log_fd , LOG_LEVEL_INFO );
-	SetLogStyles( log_fd , LOG_STYLES_HELLO , LOG_NO_STYLEFUNC );
-
-	DebugLog( log_fd , __FILE__ , __LINE__ , "hello DEBUG" );
-	InfoLog( log_fd , __FILE__ , __LINE__ , "hello INFO" );
-	WarnLog( log_fd , __FILE__ , __LINE__ , "hello WARN" );
-	ErrorLog( log_fd , __FILE__ , __LINE__ , "hello ERROR" );
-	FatalLog( log_fd , __FILE__ , __LINE__ , "hello FATAL" );
-	DestroyLogHandle( log_fd );
-#endif	
-	
+    EV_LOGI("EV_register OK.....\n");
 	return 1;
 }
 
@@ -1142,7 +1116,7 @@ int EV_release()
     EV_timer_release(&timer_pc);
     EV_closeSerialPort();
 	EV_callBack_fun = NULL;
-	EV_LOGI7("EV_release OK.....");
+    EV_LOGI("EV_release OK.....");
 	return 1;
 }
 

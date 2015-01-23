@@ -1,56 +1,32 @@
 #ifndef _EV_CONFIG_H_
 #define _EV_CONFIG_H_
 #include "EVprotocol.h"
+#include "LOGC.h"
 
 //适用于安卓的特定定位输出
-#if EV_ANDROID
+#if (defined EV_ANDROID)
 #include<android/log.h>
 #define EV_LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "EV_thread", __VA_ARGS__))
 #define EV_LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
 #define EV_LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
-//7级日志输出  数字越小级别越高
-#define EV_LOGI1(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI2(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI3(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI4(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI5(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI6(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define EV_LOGI7(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGCOM(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-
 #define EV_LOGTASK(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
 #define EV_LOGFLOW(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-
-
-#elif 1
-#define EV_LOGD(...)    printf(__VA_ARGS__)
-#define EV_LOGI(...)    printf(__VA_ARGS__)
-#define EV_LOGW(...)    printf(__VA_ARGS__)
-#define EV_LOGE(...)    printf(__VA_ARGS__)
-#define EV_LOGI1(...)   printf(__VA_ARGS__)
-#define EV_LOGI2(...)   printf(__VA_ARGS__)
-#define EV_LOGI3(...)   printf(__VA_ARGS__)
-#define EV_LOGI4(...)   printf(__VA_ARGS__)
-#define EV_LOGI5(...)   printf(__VA_ARGS__)
-#define EV_LOGI6(...)   printf(__VA_ARGS__)
-#define EV_LOGI7(...)   printf(__VA_ARGS__)
-#define EV_LOGCOM(...)  do{}while(0)//屏蔽串口十六进制打印
-#define EV_LOGTASK(...) printf(__VA_ARGS__)
-#define EV_LOGFLOW(...) printf(__VA_ARGS__)
+#elif (defined EV_WIN32)
+#define EV_LOGD(...)    (DebugLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGI(...)    (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGW(...)    (WarnLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGE(...)    (ErrorLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGCOM(...)  (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGTASK(...) (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGFLOW(...) (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
 
 #else
 #define EV_LOGD(...)    do{}while(0)
 #define EV_LOGI(...)    do{}while(0)
 #define EV_LOGW(...)    do{}while(0)
 #define EV_LOGE(...)    do{}while(0)
-#define EV_LOGI1(...)   do{}while(0)
-#define EV_LOGI2(...)   do{}while(0)
-#define EV_LOGI3(...)   do{}while(0)
-#define EV_LOGI4(...)   do{}while(0)
-#define EV_LOGI5(...)   do{}while(0)
-#define EV_LOGI6(...)   do{}while(0)
-#define EV_LOGI7(...)   do{}while(0)
 #define EV_LOGCOM(...)  do{}while(0)
 #define EV_LOGTASK(...) do{}while(0)
 #define EV_LOGFLOW(...) do{}while(0)

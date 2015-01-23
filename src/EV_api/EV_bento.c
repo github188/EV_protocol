@@ -26,13 +26,13 @@ int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int sto
     yserial_setTimeout(fd,10);
     yserial_clear(fd);
 	bento_fd = fd;
-    EV_LOGI4("EV_openSerialPort:Serial[%s] open suc\n",portName);
+    EV_LOGI("EV_openSerialPort:Serial[%s] open suc\n",portName);
     return 1;
 }
 
 int EV_bento_closeSerial()
 {
-	EV_LOGI4("EV_closeSerialPort:closed...\n");
+    EV_LOGI("EV_closeSerialPort:closed...\n");
     yserial_close(bento_fd);
 
     return 1;

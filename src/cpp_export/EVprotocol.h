@@ -28,7 +28,7 @@ extern "C" {
 #define EV_ACK_PC           0x80
 #define EV_NAK_PC           0x81 //PC回应NAK
 #define EV_ACK_VM           0x01
-#define EV_NAK_VM           0x02
+#define EV_NAK_VM           0x02 //VMC拒绝PC请求
 #define EV_POLL             0x03
 #define EV_PAYIN_RPT        0x06  //投币报告
 #define EV_COLUMN_REQ       0x8A  //获取货道
@@ -52,7 +52,8 @@ extern "C" {
 #define EV_ONLINE           0xA7
 #define EV_TIMEOUT          0xA8
 #define EV_FAIL             0xA9
-#define EV_EXIT_MANTAIN     0xA3
+#define EV_BUSY             0xAB
+#define EV_REQUEST_FAIL     0xAA
 
 
 //目标机32位
@@ -110,6 +111,12 @@ typedef struct _st_setup_{
     ST_BIN      subBin;     //副柜结构体
 }ST_SETUP;
 
+typedef struct _st_request_{
+
+
+}ST_REQUEST;
+
+
 
 typedef struct _st_trade_{
     uint8 cabinet;
@@ -151,11 +158,6 @@ typedef struct _st_state_{
 *********************************************************************************************************/
 typedef void (EV_API *EV_CALLBACK_HANDLE)(int type,const void *ptr);
 
-#if 0
-
-
-
-
 
 
 /*********************************************************************************************************
@@ -166,8 +168,6 @@ typedef void (EV_API *EV_CALLBACK_HANDLE)(int type,const void *ptr);
 ** Returned value	:		1成功  -1失败(串口打开失败)  0创建线程失败
 *********************************************************************************************************/
 EV_EXPORT int   EV_API  EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack);
-
-
 
 
 EV_EXPORT void  EV_API  EV_vmcStop();
@@ -184,7 +184,6 @@ EV_EXPORT int   EV_API  EV_cashControl(int flag);
 EV_EXPORT int   EV_API  EV_cabinetControl(int cabinet, int dev, int flag);
 EV_EXPORT int   EV_API  EV_setDate(const void *date);
 
-#endif
 #endif
 #ifdef __cplusplus
 }

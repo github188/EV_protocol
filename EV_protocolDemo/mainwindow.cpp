@@ -71,10 +71,11 @@ void MainWindow::on_pushButton_start_clicked()
         int ret = vmcStart(portArr.data(),MainWindow::EV_callBack);
         if(ret == -1)
         {
-            QMessageBox::warning(this,tr("COM"),tr("Open fail!"),QMessageBox::Yes);
+            QMessageBox::warning(this,tr("COM"),tr("Open serialport fail!"),QMessageBox::Yes);
         }
         return;
     }
+    QMessageBox::warning(this,tr("COM"),tr("Load dll failed!"),QMessageBox::Yes);
 }
 
 void MainWindow::on_pushButton_trade_clicked()

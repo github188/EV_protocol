@@ -91,6 +91,9 @@ typedef struct _st_date_{
 
 
 
+
+
+
 typedef void (*EV_callBack)(const int,const void *);
 int EV_closeSerialPort();
 int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopbits);

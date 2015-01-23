@@ -12,17 +12,6 @@
 #include "timer.h"
 
 
-
-#ifdef EV_ANDROID
-#include<android/log.h>
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
-#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
-#else
-#define LOGI(...) printf(__VA_ARGS__)
-#define LOGW(...) printf(__VA_ARGS__)
-#define LOGE(...) printf(__VA_ARGS__)
-#endif
 // 全局变量
 JavaVM* g_jvm = NULL;
 jobject g_obj = NULL;
@@ -61,6 +50,20 @@ void JNI_json_insert_int(json_t *json,char *label,long value)
 	json_insert_child(json,j_label);
 }
 
+
+json_t *JNI_request_rpt(const void *ptr)
+{
+//    json_t *root,*entry,*label;
+//    root = json_new_object();
+//    entry = json_new_object();
+//    JNI_json_insert_str(entry,JSON_TYPE,"EV_REQUEST_FAIL");
+//    data = (uint8 *)ptr;
+//    JNI_json_insert_int(entry,"cmd",*data);
+//    JNI_json_insert_str(entry,"msg","EV_REQUEST_FAIL");
+//    label = json_new_string(JSON_HEAD);
+//    json_insert_child(label,entry);
+//    json_insert_child(root,label);
+}
 
 
 json_t *JNI_setup_rpt(const void *ptr)
@@ -280,15 +283,18 @@ static void JNI_callBack(const int type,const void *ptr)
 			json_insert_child(label,entry);
 			json_insert_child(root,label);
 			break;
-		case EV_NA:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_NA");
+        case EV_BUSY:
+            root = json_new_object();
+            entry = json_new_object();
+            JNI_json_insert_str(entry,JSON_TYPE,"EV_BUSY");
             data = (uint8 *)ptr;
-			JNI_json_insert_int(entry,"cmd",*data);			
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
+            JNI_json_insert_int(entry,"cmd",*data);
+            label = json_new_string(JSON_HEAD);
+            json_insert_child(label,entry);
+            json_insert_child(root,label);
+            break;
+        case EV_REQUEST_FAIL:
+            //JNI_request_rpt(ptr);
 			break;
 		case EV_STATE_RPT:
             data = (uint8 *)ptr;
@@ -340,7 +346,7 @@ void *JNI_run(void* arg)
     ret  = (*g_jvm)->AttachCurrentThread(g_jvm,&g_env, NULL);
     if(ret != JNI_OK)
     {
-        LOGE("%s: AttachCurrentThread() failed", __FUNCTION__);
+        EV_LOGE("%s: AttachCurrentThread() failed", __FUNCTION__);
         pthread_exit(0);
         return NULL;
     }
@@ -349,23 +355,25 @@ void *JNI_run(void* arg)
     cls = (*g_env)->GetObjectClass(g_env, g_obj);
     if(cls == NULL)
     {
-        LOGE("FindClass() Error ......");
+        EV_LOGE("FindClass() Error ......");
         pthread_exit(0);
         return NULL;
     }
     jstring msg = (*g_env)->NewStringUTF(g_env,"JNI CallBack OK...");
     //获得类中的“成员”方法
     methodID_EV_callBack = (*g_env)->GetMethodID(g_env,cls,"EV_callBack","(Ljava/lang/String;)V");
+
     if(methodID_EV_callBack == NULL)
     {
-        LOGE("GetMethodID() Error ......");
+        EV_LOGE("GetMethodID() Error ......");
     }
     if(methodID_EV_callBack)// 最后调用类中“成员”方法
     {
         (*g_env)->CallVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
+
     }
 
-    LOGI("thread_fun ready...\n");
+    EV_LOGI("EV_thread ready to run...\n");
 	while(!g_threadStop)
 	{
        EV_task();
@@ -376,9 +384,9 @@ void *JNI_run(void* arg)
     //Detach主线程
     if((*g_jvm)->DetachCurrentThread(g_jvm) != JNI_OK)
     {
-        LOGE("%s: DetachCurrentThread() failed", __FUNCTION__);
+        EV_LOGE("%s: DetachCurrentThread() failed", __FUNCTION__);
     }
-	LOGI("JNI Thread stopped....");
+    EV_LOGI("JNI Thread stopped....");
     pid = 0;
 	pthread_exit(0);
 
@@ -396,7 +404,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 	JNIEnv* env = NULL;
     reserved = reserved;
 	if ((*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_4) != JNI_OK) {
-		LOGE("GetEnv failed!");
+        EV_LOGE("GetEnv failed!");
 		return -1;
 	}
 	return JNI_VERSION_1_4;
@@ -413,22 +421,30 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
   (JNIEnv *env, jobject obj,jstring jport)
 {
     void *ret;
-	const char *portName = (*env)->GetStringUTFChars(env,jport, NULL);
-    EV_closeSerialPort();
-	int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
-	(*env)->ReleaseStringUTFChars(env,jport,portName);
-    if (fd < 0){
-			LOGE("Can't Open Serial Port:%s!",portName);
-			return -1;
-	}
-	LOGI("EV_openSerialPort suc.....!\n");
-    //串口打开成功  开启线程
+    const char *portName;
+
+    SetLogFile( "ev.log" , getenv("HOME") );
+    SetLogLevel( LOGLEVEL_DEBUG );
+
+
+
     if(pid)//线程已经开启了  关闭线程
     {
-        LOGI("The serialport thread has runing!!!!");
+        EV_LOGI("The serialport thread has runing!!!!\n");
         g_threadStop = 1;
         pthread_join(pid,&ret);
     }
+
+    portName = (*env)->GetStringUTFChars(env,jport, NULL);
+    EV_closeSerialPort();
+    int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
+    (*env)->ReleaseStringUTFChars(env,jport,portName);
+    if (fd < 0){
+            EV_LOGE("Can't Open Serial Port:%s!",portName);
+            return -1;
+    }
+    //串口打开成功  开启线程
+
     (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
     g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
     g_threadStop = 0;
@@ -448,7 +464,7 @@ JNIEXPORT void JNICALL
 Java_com_easivend_evprotocol_EVprotocol_vmcStop
   (JNIEnv *env, jobject obj)
 {
-	LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
+    EV_LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
 	g_threadStop = 1;
 }
 
@@ -462,7 +478,7 @@ Java_com_easivend_evprotocol_EVprotocol_trade
   (JNIEnv *env, jobject obj,jint cabinet, jint column, jint type, jint cost)
 {
 	jint ret;
-   // LOGI("cabinet=%d coulmn=%d type =%d  cost=%d",cabinet,column,type,cost);
+   // EV_LOGI("cabinet=%d coulmn=%d type =%d  cost=%d",cabinet,column,type,cost);
     ret = EV_pcTrade(cabinet,column,type,cost);
 	return ret;
 }
@@ -582,7 +598,7 @@ JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRegister
 	int fd = EV_bento_openSerial((char *)portName,9600,8,'N',1);
 	(*env)->ReleaseStringUTFChars(env,jport,portName);
     if (fd < 0){
-			LOGE("Can't Open Serial Port:%s!",portName);
+            EV_LOGE("Can't Open Serial Port:%s!",portName);
 			return -1;
 	}
 	return 1;
@@ -635,7 +651,7 @@ Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 	ST_BENTO_FEATURE st_bento;
 
     env = env; obj = obj;
-	EV_LOGI5("EV_bento_check:start\n");
+    EV_LOGI("EV_bento_check:start\n");
 	ret = EV_bento_check(cabinet, &st_bento);
 
 	if(ret == 1)
