@@ -16,6 +16,7 @@
 JavaVM* g_jvm = NULL;
 jobject g_obj = NULL;
 JNIEnv *g_env = NULL;
+jclass *g_cls = NULL;
 static pthread_t pid;
 static volatile int g_threadStop = 0;
 static jmethodID methodID_EV_callBack = NULL;
@@ -339,7 +340,6 @@ static void JNI_callBack(const int type,const void *ptr)
 
 void *JNI_run(void* arg)
 { 
-    jclass cls;
     int ret;
     EV_register(JNI_callBack);//注册回调
     // Attach主线程
@@ -351,17 +351,10 @@ void *JNI_run(void* arg)
         return NULL;
     }
 
-    // 找到对应的类
-   // cls = (*g_env)->GetObjectClass(g_env, g_obj);
-    cls = (*g_env)->FindClass(g_env,"com/easivend/evprotocol/EVprotocol");
-    if(cls == NULL)
-    {
-        EV_LOGE("FindClass() Error ......");
-        pthread_exit(0);
-    }
-    jstring msg = (*g_env)->NewStringUTF(g_env,"{\"EV_TYPE\":\"JNI CallBack OK...\"}");
+    jstring msg = (*g_env)->NewStringUTF(g_env,"{\"EV_json\":{\"EV_type\":\"JNI CallBack OK\"}}");
     //获得类中的“成员”方法
-    methodID_EV_callBack = (*g_env)->GetStaticMethodID(g_env,cls,"EV_callBack","(Ljava/lang/String;)V");
+    if(g_env != NULL && g_cls != NULL)
+        methodID_EV_callBack = (*g_env)->GetStaticMethodID(g_env,g_cls,"EV_callBack","(Ljava/lang/String;)V");
 
     if(methodID_EV_callBack == NULL)
     {
@@ -441,6 +434,14 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
     //串口打开成功  开启线程
     (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
     g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
+
+    jclass cls = (*env)->FindClass(env,"com/easivend/evprotocol/EVprotocol");
+    if(cls == NULL)
+    {
+        EV_LOGW("FindClass\"com/easivend/evprotocol/EVprotocol!\" Failed\n");
+    }
+    g_cls = (*env)->NewGlobalRef(env, cls);
+    EV_LOGD("cls=%x &cls=%x g_cls=%x",cls,&cls,g_cls);
     g_threadStop = 0;
     pthread_create(&pid, NULL, JNI_run, NULL);
 
