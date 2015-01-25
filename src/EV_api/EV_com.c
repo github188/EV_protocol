@@ -1063,7 +1063,7 @@ int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopb
 
     EV_LOGI("Open [%s] suc...\n",portName);
     memset(vmc_port,0,sizeof(vmc_port));
-    sprintf(vmc_port,portName);
+    strncpy(vmc_port,portName,strlen(portName));
     return 1;
 }
 
@@ -1081,8 +1081,10 @@ int EV_closeSerialPort()
 int EV_register(EV_callBack callBack)
 {
     int ret;
+#ifndef EV_ANDROID
     SetLogFile( "ev.log" , getenv("HOME") );
     SetLogLevel( LOGLEVEL_DEBUG );
+#endif
 	if(callBack == NULL)
 	{
 		EV_LOGW("The callback is NULL.....\n");

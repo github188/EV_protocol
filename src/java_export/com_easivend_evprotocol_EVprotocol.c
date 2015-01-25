@@ -329,7 +329,7 @@ static void JNI_callBack(const int type,const void *ptr)
         msg = (*g_env)->NewStringUTF(g_env,text);
         if(methodID_EV_callBack)// 最后调用类中“成员”方法
         {
-            (*g_env)->CallVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
+            (*g_env)->CallStaticVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
         }
         free(text);
         json_free_value(&root);
@@ -352,16 +352,16 @@ void *JNI_run(void* arg)
     }
 
     // 找到对应的类
-    cls = (*g_env)->GetObjectClass(g_env, g_obj);
+   // cls = (*g_env)->GetObjectClass(g_env, g_obj);
+    cls = (*g_env)->FindClass(g_env,"com/easivend/evprotocol/EVprotocol");
     if(cls == NULL)
     {
         EV_LOGE("FindClass() Error ......");
         pthread_exit(0);
-        return NULL;
     }
-    jstring msg = (*g_env)->NewStringUTF(g_env,"JNI CallBack OK...");
+    jstring msg = (*g_env)->NewStringUTF(g_env,"{\"EV_TYPE\":\"JNI CallBack OK...\"}");
     //获得类中的“成员”方法
-    methodID_EV_callBack = (*g_env)->GetMethodID(g_env,cls,"EV_callBack","(Ljava/lang/String;)V");
+    methodID_EV_callBack = (*g_env)->GetStaticMethodID(g_env,cls,"EV_callBack","(Ljava/lang/String;)V");
 
     if(methodID_EV_callBack == NULL)
     {
@@ -369,7 +369,7 @@ void *JNI_run(void* arg)
     }
     if(methodID_EV_callBack)// 最后调用类中“成员”方法
     {
-        (*g_env)->CallVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
+        (*g_env)->CallStaticVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
 
     }
 
@@ -389,8 +389,6 @@ void *JNI_run(void* arg)
     EV_LOGI("JNI Thread stopped....");
     pid = 0;
 	pthread_exit(0);
-
-    return NULL;
 }
 
 
@@ -422,21 +420,18 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
 {
     void *ret;
     const char *portName;
-
+#ifndef EV_ANDROID
     SetLogFile( "ev.log" , getenv("HOME") );
     SetLogLevel( LOGLEVEL_DEBUG );
-
-
-
+#endif
+    EV_closeSerialPort();
     if(pid)//线程已经开启了  关闭线程
     {
         EV_LOGI("The serialport thread has runing!!!!\n");
         g_threadStop = 1;
         pthread_join(pid,&ret);
     }
-
     portName = (*env)->GetStringUTFChars(env,jport, NULL);
-    EV_closeSerialPort();
     int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
     (*env)->ReleaseStringUTFChars(env,jport,portName);
     if (fd < 0){
@@ -444,7 +439,6 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
             return -1;
     }
     //串口打开成功  开启线程
-
     (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
     g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
     g_threadStop = 0;
