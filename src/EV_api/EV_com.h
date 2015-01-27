@@ -47,12 +47,7 @@
 #define GET_STATUS  0x86
 #define PAYOUT_IND	0x89
 
-//VMC当前状态
-#define EV_STATE_DISCONNECT		0    //断开连接
-#define EV_STATE_INITTING		1    //正在初始化
-#define EV_STATE_NORMAL			2    //正常
-#define EV_STATE_FAULT			3    //故障
-#define EV_STATE_MANTAIN		4    //维护
+
 
 
 #define PC_REQ_IDLE		0
@@ -70,8 +65,10 @@
 typedef struct _st_vm_data_{
     ST_SETUP setup;
     ST_TRADE trade;
+    ST_PC_REQ pcReq;
     //实时状态
-    uint8 state;
+    ST_STATE state;
+    //uint8 state;
     uint8 lastState;
     uint32 remainAmount;//当前投币余额
 

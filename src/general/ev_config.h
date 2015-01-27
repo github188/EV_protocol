@@ -3,7 +3,17 @@
 #include "EVprotocol.h"
 #include "LOGC.h"
 
+
+#define EV_LOGD(...)    (DebugLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGI(...)    (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGW(...)    (WarnLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGE(...)    (ErrorLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGCOM(...)  (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGTASK(...) (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+#define EV_LOGFLOW(...) (InfoLog( __FILE__ , __LINE__ , __VA_ARGS__ ))
+
 //适用于安卓的特定定位输出
+#if 0
 #if (defined EV_ANDROID)
 #include<android/log.h>
 #define EV_LOGD(...) ((void)__android_log_print(ANDROID_LOG_DEBUG, "EV_thread", __VA_ARGS__))
@@ -32,7 +42,7 @@
 #define EV_LOGFLOW(...) do{}while(0)
 
 #endif
-
+#endif
 
 
 /*********************************************************************************************************
@@ -54,5 +64,5 @@
 
 
 uint16 EV_crcCheck(uint8 *msg,uint8 len);
-
+int EV_createLog();
 #endif

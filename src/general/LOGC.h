@@ -20,6 +20,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
+
+
 #if ( defined _WIN32 )
 #include <windows.h>
 #include <share.h>
@@ -37,7 +39,11 @@
 extern "C" {
 #endif
 
-/* ¹«¹²ºê */
+
+
+
+
+/* å…¬å…±å® */
 #ifndef MAXLEN_FILENAME
 #define MAXLEN_FILENAME			256
 #endif
@@ -51,7 +57,7 @@ extern "C" {
 #define MEMCMP(_a_,_C_,_b_,_n_) ( memcmp(_a_,_b_,_n_) _C_ 0 )
 #endif
 
-/* ¿çÆ½Ì¨ºê */
+/* è·¨å¹³å°å® */
 #if ( defined __linux__ ) || ( defined __unix ) || ( defined _AIX )
 #define TLS		__thread
 #define VSNPRINTF	vsnprintf
@@ -76,7 +82,7 @@ extern "C" {
 #define NEWLINE		"\r\n"
 #endif
 
-/* ¼òµ¥ÈÕÖ¾º¯Êı */
+/* ç®€å•æ—¥å¿—å‡½æ•° */
 #ifndef LOGLEVEL_DEBUG
 #define LOGLEVEL_DEBUG		0
 #define LOGLEVEL_INFO		1

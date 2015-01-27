@@ -40,7 +40,7 @@ LOCAL_SRC_FILES += $(TOP_DIR)/general/ev_config.c
 LOCAL_SRC_FILES += $(TOP_DIR)/EV_api/EV_com.c
 LOCAL_SRC_FILES += $(TOP_DIR)/EV_api/EV_bento.c
 LOCAL_SRC_FILES += $(TOP_DIR)/EV_api/json.c
-
+LOCAL_SRC_FILES += $(TOP_DIR)/general/LOGC.c
 
 LOCAL_MODULE_FILENAME := libEVprotocol
 LOCAL_LDLIBS := -llog

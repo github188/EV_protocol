@@ -14,6 +14,9 @@ static uint8 snNo = 0;
 
 static ST_VM_DATA st_vm; 
 
+
+
+
 volatile uint8 pcLock;//PC请求互斥锁
 volatile uint8 pcType,pcsubType;//PC请求类型 0表示无请求标志空闲
 volatile uint8 pcFlag;//VMC 0空闲 1需要发送请求  2正在处理请求
@@ -85,7 +88,7 @@ void EV_setVmState(const uint8 type)
 {
 	last_vm_state = vm_state; 
 	vm_state = type;
-	st_vm.state = vm_state;
+    st_vm.state.vmcState = vm_state;
 	st_vm.lastState = last_vm_state;
 }
 
@@ -473,16 +476,20 @@ int EV_recv()
 uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 {
     uint8 temp = EV_getVmState();
+    ST_PC_REQ req;
     if(temp == EV_STATE_DISCONNECT || temp == EV_STATE_INITTING)
     {
-        EV_callbackhandle(EV_STATE_RPT,&temp);
+        req.type = EV_get_pc_cmd();
+        req.err = PC_CMD_FAULT;
+        EV_callbackhandle(EV_REQUEST_FAIL,&req);
         return 0;
     }
 
     if(EV_get_pc_flag() != PC_REQ_IDLE)
     {
-        temp = EV_get_pc_cmd();
-        EV_callbackhandle(EV_BUSY,&temp);
+        req.type = EV_get_pc_cmd();
+        req.err = PC_CMD_BUSY;
+        EV_callbackhandle(EV_REQUEST_FAIL,&req);
         return 0;
     }
     return EV_pcReqSend(type,ackBack,data,len);
@@ -505,7 +512,6 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 	int i;
 	if(EV_get_pc_flag() != PC_REQ_IDLE)
 	{
-		EV_callbackhandle(EV_FAIL,"EV_pcReqSend is not PC_REQ_IDLE:\n");
 		EV_LOGW("EV_pcReqSend send failed,anther request...");
 		return 0;//如果有请求则退出
 	}
@@ -552,7 +558,26 @@ void EV_task()
 	
 }
 
+static uint8 EV_state_rpt(ST_STATE *state,uint8 *data)
+{
+    uint8 lastState;
+    if(data[HEAD_LEN] & 0x03)
+        EV_setVmState(EV_STATE_FAULT);
+    else
+        EV_setVmState(EV_STATE_NORMAL);
 
+    lastState = EV_getLastVmState();
+    if(lastState == EV_STATE_MANTAIN)//状态是维护 不更改
+    {
+        EV_setVmState(EV_STATE_MANTAIN);
+        return 1;
+    }
+    else if(lastState == EV_STATE_INITTING)
+        return 0;
+    else
+        return 1;
+
+}
 
 static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
 {
@@ -649,14 +674,17 @@ static void EV_payin_rpt(uint8 *data)
 {
     uint8 index = MT + 1,temp = 0;
     uint32 temp32;
-    temp = temp;
-	temp = data[index++];//bill or coin
-	temp = data[index++];
-	temp = data[index++];
+    ST_PAYIN_RPT payin;
+
+    payin.payin_type = data[index++];//bill or coin
+    temp32 = INTEG16(data[index ++],data[index ++]);
+    payin.payin_amount = EV_amountFromVM(temp32);
 
     temp32 = INTEG16(data[index + 0],data[index + 1]);
     index += 2;
+    payin.reamin_amount = EV_amountFromVM(temp32);
 	st_vm.remainAmount = EV_amountFromVM(temp32);
+    EV_callbackhandle(EV_PAYIN_RPT,&payin);
 }
 
 
@@ -688,20 +716,25 @@ static void EV_payout_rpt(uint8 *data)
 {
     uint8 index = MT + 1,temp = 0;
     uint32 temp32;
-
-    temp = temp;
-	temp = data[index++];//bill or coin
+    ST_PAYOUT_RPT payout;
+    payout.payout_type = data[index++];//bill or coin
 	
-	temp = data[index++];
-	temp = data[index++];
-
-
+    temp32 = INTEG16(data[index ++],data[index ++]);
+    payout.payout_amount = EV_amountFromVM(temp32);
 
     temp32 = INTEG16(data[index + 0],data[index + 1]);
     index += 2;
+    payout.reamin_amount = EV_amountFromVM(temp32);
 	st_vm.remainAmount = EV_amountFromVM(temp32);
 
 	temp = data[index++];
+
+    if(EV_get_pc_cmd() == EV_PAYOUT_REQ ||
+        (EV_get_pc_cmd() == EV_CONTROL_REQ && EV_getSubcmd() == 6))
+    {
+        EV_set_pc_cmd(EV_NA);
+        EV_callbackhandle(EV_PAYOUT_RPT,&payout);
+    }
 	
 }
 
@@ -722,24 +755,26 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			{
 				EV_set_pc_cmd(EV_NA);
 				EV_LOGFLOW("EV_NA\n");
-				temp = EV_get_pc_cmd();
-                EV_callbackhandle(EV_NAK_VM,&temp);
+                st_vm.pcReq.type = EV_get_pc_cmd();;
+                st_vm.pcReq.err = PC_CMD_NAK;
+                EV_callbackhandle(EV_REQUEST_FAIL,&st_vm.pcReq);
 			}
 			break;
 		case EV_TIMEOUT:
 			EV_LOGFLOW("EV_TIMEOUT...cmd=%x\n",EV_get_pc_cmd());
-			temp = EV_get_pc_cmd();
-			EV_callbackhandle(EV_TIMEOUT,&temp);
+            st_vm.pcReq.type = EV_get_pc_cmd();;
+            st_vm.pcReq.err = PC_CMD_TIMEOUT;
+            EV_callbackhandle(EV_REQUEST_FAIL,&st_vm.pcReq);
 			break;
         case EV_SETUP_REQ:	//	1 初始化 GET_SETUP PC发送初始化命令
         	if(EV_getVmState() == EV_STATE_DISCONNECT)
         	{
         		EV_set_pc_cmd(EV_NA);
-        		EV_setVmState(EV_STATE_INITTING);	
-                EV_LOGFLOW("EV_connected,Start to init....\n");
-				EV_callbackhandle(EV_INITING,recvbuf);
+                EV_setVmState(EV_STATE_INITTING);
+                EV_callbackhandle(EV_INITING,NULL);
+                EV_LOGFLOW("EV_connected,Start to init....\n");	
         	}
-        	EV_callbackhandle(EV_SETUP_REQ,recvbuf);
+            EV_callbackhandle(EV_SETUP_REQ,NULL);
 			EV_LOGFLOW("EV_SETUP_REQ\n");
 			EV_pcReqSend(GET_SETUP,0,NULL,0);
 			break;
@@ -781,46 +816,19 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		case EV_STATE_RPT://状态返回
 			EV_LOGFLOW("EV_STATE_RPT\n");
 			if(EV_get_pc_cmd() == EV_STATE_REQ)
-			{
 				EV_set_pc_cmd(EV_NA);
-			}
-
-			if(EV_getVmState() == EV_STATE_INITTING)//初始化状态 表示初始化完毕
-			{
-				if(data[HEAD_LEN] & 0x03)
-					EV_setVmState(EV_STATE_FAULT);
-				else
-					EV_setVmState(EV_STATE_NORMAL);
-
-                temp = EV_getVmState();
-                EV_callbackhandle(EV_STATE_RPT,&temp);
-				
-			}
-			else if(EV_getVmState() == EV_STATE_MANTAIN)//状态是维护 不更改
-			{
-				temp = EV_getVmState();
-				EV_callbackhandle(EV_STATE_RPT,&temp);
-				break;
-			}
-			else
-			{
-				if(data[HEAD_LEN] & 0x03)
-					EV_setVmState(EV_STATE_FAULT);
-				else
-					EV_setVmState(EV_STATE_NORMAL);
-				temp = EV_getVmState();
-				EV_callbackhandle(EV_STATE_RPT,&temp);
-				break;
-			}
-
+            temp = EV_state_rpt(&st_vm.state,recvbuf);
+            EV_callbackhandle(EV_STATE_RPT,&st_vm.state);
+            if(temp == 1)
+                 break;
 		case EV_ONLINE://在线
-			EV_callbackhandle(EV_ONLINE,recvbuf);
+            EV_callbackhandle(EV_ONLINE,NULL);
 			EV_LOGFLOW("EV_conneced online....\n");	
 			break;
 		case EV_OFFLINE://离线
 			EV_setVmState(EV_STATE_DISCONNECT);
 			EV_LOGFLOW("EV_disconnected......\n");
-			EV_callbackhandle(EV_OFFLINE,recvbuf);
+            EV_callbackhandle(EV_OFFLINE,NULL);
 			break;
 		case EV_ACTION_REQ: // PC动作请求 目前不用
 			
@@ -828,8 +836,8 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		case EV_ACTION_RPT: //VMC动作报告 
 			if(data[MT + 1] == 7)//VMC重启报告
 			{
-				EV_callbackhandle(EV_RESTART,recvbuf);
-				EV_LOGFLOW("VMC is restarted......\n");
+                EV_LOGFLOW("VMC is restarted......\n");
+                EV_callbackhandle(EV_RESTART,NULL);
 				EV_setVmState(EV_STATE_INITTING);
 				EV_set_pc_cmd(EV_NA);
 				EV_pcReqSend(GET_SETUP,0,NULL,0);
@@ -883,18 +891,10 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		case EV_PAYIN_RPT://投币上报
 			EV_LOGFLOW("EV_PAYIN_RPT\n");
 			EV_payin_rpt(recvbuf);
-			EV_callbackhandle(EV_PAYIN_RPT,&st_vm);
 			break;
 		case EV_PAYOUT_RPT:
-			EV_payout_rpt(recvbuf);
-			if(EV_get_pc_cmd() == EV_PAYOUT_REQ || 
-				(EV_get_pc_cmd() == EV_CONTROL_REQ && EV_getSubcmd() == 6))
-			{
-				EV_set_pc_cmd(EV_NA);
-				EV_LOGFLOW("EV_PAYOUT_RPT\n");
-				EV_callbackhandle(EV_PAYOUT_RPT,&st_vm);
-			}
-			
+            EV_LOGFLOW("EV_PAYOUT_RPT\n");
+			EV_payout_rpt(recvbuf);	
 			break;
 		
 		case EV_BUTTON_RPT://按键上报
@@ -1081,10 +1081,6 @@ int EV_closeSerialPort()
 int EV_register(EV_callBack callBack)
 {
     int ret;
-#ifndef EV_ANDROID
-    SetLogFile( "ev.log" , getenv("HOME") );
-    SetLogLevel( LOGLEVEL_DEBUG );
-#endif
 	if(callBack == NULL)
 	{
 		EV_LOGW("The callback is NULL.....\n");

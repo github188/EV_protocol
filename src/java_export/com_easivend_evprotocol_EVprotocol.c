@@ -16,7 +16,7 @@
 JavaVM* g_jvm = NULL;
 jobject g_obj = NULL;
 JNIEnv *g_env = NULL;
-jclass *g_cls = NULL;
+jclass g_cls = NULL;
 static pthread_t pid;
 static volatile int g_threadStop = 0;
 static jmethodID methodID_EV_callBack = NULL;
@@ -52,18 +52,76 @@ void JNI_json_insert_int(json_t *json,char *label,long value)
 }
 
 
+json_t *JNI_state_rpt(const void *ptr)
+{
+    json_t *root,*entry,*label;
+    ST_STATE *state = (ST_STATE *)ptr;
+    root = json_new_object();
+    entry = json_new_object();
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_STATE_RPT");
+    JNI_json_insert_int(entry,"vmcState",state->vmcState);
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+    return root;
+}
+
+json_t *JNI_payin_rpt(const void *ptr)
+{
+    json_t *root,*entry,*label;
+    ST_PAYIN_RPT *payin = (ST_PAYIN_RPT *)ptr;
+    root = json_new_object();
+    entry = json_new_object();
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYIN_RPT");
+    JNI_json_insert_int(entry,"payin_type",payin->payin_type);
+    JNI_json_insert_int(entry,"payin_amount",payin->payin_amount);
+    JNI_json_insert_int(entry,"reamin_amount",(long)payin->reamin_amount);
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+    return root;
+}
+
+
+json_t *JNI_payout_rpt(const void *ptr)
+{
+    json_t *root,*entry,*label;
+    ST_PAYOUT_RPT *payout = (ST_PAYOUT_RPT *)ptr;
+    root = json_new_object();
+    entry = json_new_object();
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYOUT_RPT");
+    JNI_json_insert_int(entry,"payout_type",payout->payout_type);
+    JNI_json_insert_int(entry,"payout_amount",payout->payout_amount);
+    JNI_json_insert_int(entry,"reamin_amount",payout->reamin_amount);
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+}
+
 json_t *JNI_request_rpt(const void *ptr)
 {
-//    json_t *root,*entry,*label;
-//    root = json_new_object();
-//    entry = json_new_object();
-//    JNI_json_insert_str(entry,JSON_TYPE,"EV_REQUEST_FAIL");
-//    data = (uint8 *)ptr;
-//    JNI_json_insert_int(entry,"cmd",*data);
-//    JNI_json_insert_str(entry,"msg","EV_REQUEST_FAIL");
-//    label = json_new_string(JSON_HEAD);
-//    json_insert_child(label,entry);
-//    json_insert_child(root,label);
+    json_t *root,*entry,*label;
+    ST_PC_REQ *req = (ST_PC_REQ *)ptr;
+    root = json_new_object();
+    entry = json_new_object();
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_REQUEST_FAIL");
+    JNI_json_insert_int(entry,"cmd",req->type);
+    if(req->err == PC_CMD_TIMEOUT)
+        JNI_json_insert_str(entry,"msg","timeout");
+    else if(req->err == PC_CMD_NAK)
+        JNI_json_insert_str(entry,"msg","fail");
+    else if(req->err == PC_CMD_BUSY)
+        JNI_json_insert_str(entry,"msg","busy");
+    else if(req->err == PC_CMD_FAULT)
+        JNI_json_insert_str(entry,"msg","fault");
+    else
+        JNI_json_insert_str(entry,"msg","fail");
+
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+
+    return root;
 }
 
 
@@ -206,24 +264,10 @@ static void JNI_callBack(const int type,const void *ptr)
             root = JNI_trade_rpt(ptr);
 			break;
 		case EV_PAYIN_RPT:
-			vm_ptr = (ST_VM_DATA *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYIN_RPT");
-			JNI_json_insert_int(entry,"remainAmount",(long)vm_ptr->remainAmount);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
+            root = JNI_payin_rpt(ptr);
 			break;
 		case EV_PAYOUT_RPT:
-			vm_ptr = (ST_VM_DATA *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_PAYOUT_RPT");
-			JNI_json_insert_int(entry,"remainAmount",vm_ptr->remainAmount);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
+            root = JNI_payout_rpt(ptr);
 			break;
 		case EV_ENTER_MANTAIN:
 			root = json_new_object();
@@ -274,38 +318,11 @@ static void JNI_callBack(const int type,const void *ptr)
 			json_insert_child(label,entry);
 			json_insert_child(root,label);
 			break;
-		case EV_TIMEOUT:
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_TIMEOUT");
-            data = (uint8 *)ptr;
-			JNI_json_insert_int(entry,"cmd",*data);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			break;
-        case EV_BUSY:
-            root = json_new_object();
-            entry = json_new_object();
-            JNI_json_insert_str(entry,JSON_TYPE,"EV_BUSY");
-            data = (uint8 *)ptr;
-            JNI_json_insert_int(entry,"cmd",*data);
-            label = json_new_string(JSON_HEAD);
-            json_insert_child(label,entry);
-            json_insert_child(root,label);
-            break;
         case EV_REQUEST_FAIL:
-            //JNI_request_rpt(ptr);
+            root = JNI_request_rpt(ptr);
 			break;
 		case EV_STATE_RPT:
-            data = (uint8 *)ptr;
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_STATE_RPT");
-			JNI_json_insert_int(entry,"state",(int)(*data));
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
+            root = JNI_state_rpt(ptr);
 			break;
 		case EV_BUTTON_RPT:// type 表示 按键类型 0 游戏 1货道  2退币  cabinet 柜号 value 具体值(只有货道按键有意义)
             data = (uint8 *)ptr;
@@ -330,7 +347,7 @@ static void JNI_callBack(const int type,const void *ptr)
         msg = (*g_env)->NewStringUTF(g_env,text);
         if(methodID_EV_callBack)// 最后调用类中“成员”方法
         {
-            (*g_env)->CallStaticVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
+            (*g_env)->CallStaticVoidMethod(g_env, g_cls, methodID_EV_callBack,msg);
         }
         free(text);
         json_free_value(&root);
@@ -362,7 +379,7 @@ void *JNI_run(void* arg)
     }
     if(methodID_EV_callBack)// 最后调用类中“成员”方法
     {
-        (*g_env)->CallStaticVoidMethod(g_env, g_obj, methodID_EV_callBack,msg);
+        (*g_env)->CallStaticVoidMethod(g_env, g_cls, methodID_EV_callBack,msg);
 
     }
 
@@ -380,6 +397,7 @@ void *JNI_run(void* arg)
         EV_LOGE("%s: DetachCurrentThread() failed", __FUNCTION__);
     }
     EV_LOGI("JNI Thread stopped....");
+
     pid = 0;
 	pthread_exit(0);
 }
@@ -413,28 +431,25 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
 {
     void *ret;
     const char *portName;
-#ifndef EV_ANDROID
-    SetLogFile( "ev.log" , getenv("HOME") );
-    SetLogLevel( LOGLEVEL_DEBUG );
-#endif
-    EV_closeSerialPort();
+    EV_createLog();
     if(pid)//线程已经开启了  关闭线程
     {
         EV_LOGI("The serialport thread has runing!!!!\n");
         g_threadStop = 1;
         pthread_join(pid,&ret);
     }
+    EV_closeSerialPort();
     portName = (*env)->GetStringUTFChars(env,jport, NULL);
     int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
     (*env)->ReleaseStringUTFChars(env,jport,portName);
     if (fd < 0){
-            EV_LOGE("Can't Open Serial Port:%s!",portName);
+            EV_LOGE("Can't Open Serial Port:%s!\n",portName);
             return -1;
     }
     //串口打开成功  开启线程
     (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
     g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
-
+    EV_LOGD("obj=%x &obj=%x g_obj=%x\n",obj,&obj,g_obj);
     jclass cls = (*env)->FindClass(env,"com/easivend/evprotocol/EVprotocol");
     if(cls == NULL)
     {
@@ -593,7 +608,7 @@ JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRegister
 	int fd = EV_bento_openSerial((char *)portName,9600,8,'N',1);
 	(*env)->ReleaseStringUTFChars(env,jport,portName);
     if (fd < 0){
-            EV_LOGE("Can't Open Serial Port:%s!",portName);
+            EV_LOGE("Can't Open Serial Port:%s!\n",portName);
 			return -1;
 	}
 	return 1;

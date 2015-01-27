@@ -20,9 +20,19 @@ extern "C" {
 #endif
 
 
-#define EV_NA               0x00 //无请求
-#define EV_SETUP_REQ        0x90 //初始化请求
-#define EV_SETUP_RPT 		0x05 //初始化结果返回
+
+#define EV_INITING          0xA4    //表示已于VMC连通,正在与VMC进行初始化操作
+#define EV_RESTART          0xA5    //表示VMC控制板重新启动标志
+#define EV_OFFLINE          0xA6    //表示与VMC主控板断开连接,通信故障
+#define EV_ONLINE           0xA7    //表示与VMC通信建立完成,PC可以主动发送命令
+#define EV_SETUP_REQ        0x90    //注册请求
+#define EV_SETUP_RPT 		0x05    //注册结果返回,返回机器设备的整体信息.
+#define EV_REQUEST_FAIL     0xAB    //当PC发送命令后,返回此条消息表明指令发送失败
+
+
+
+
+#define EV_NA               0x00    //无请求
 #define EV_INFO_REQ 		0x8C
 #define EV_INFO_RPT 		0x11
 #define EV_ACK_PC           0x80
@@ -46,14 +56,7 @@ extern "C" {
 #define EV_ACTION_REQ       0xA1
 #define EV_ENTER_MANTAIN    0xA2
 #define EV_EXIT_MANTAIN     0xA3
-#define EV_INITING          0xA4
-#define EV_RESTART          0xA5
-#define EV_OFFLINE          0xA6
-#define EV_ONLINE           0xA7
 #define EV_TIMEOUT          0xA8
-#define EV_FAIL             0xA9
-#define EV_BUSY             0xAB
-#define EV_REQUEST_FAIL     0xAA
 
 
 //目标机32位
@@ -70,12 +73,11 @@ typedef  long               int64;
 
 
 typedef struct _st_cash_{
-    uint8      recv_type;//现金接收器类型
-    uint32     recv_max_value;//现金接收器上限
-    uint32     recv_ch[8];//现金接收器通道面值
-    uint8      change_type;//现金找零器类型
-    uint32     change_ch[8]; //现金找零器通道面值
-
+    uint8      recv_type;       //现金接收器类型
+    uint32     recv_max_value;  //现金接收器上限
+    uint32     recv_ch[8];      //现金接收器通道面值
+    uint8      change_type;     //现金找零器类型
+    uint32     change_ch[8];    //现金找零器通道面值
 }ST_CASH;
 
 
@@ -98,7 +100,6 @@ typedef struct _st_bin_{
 
 typedef struct _st_setup_{
     uint8       language;    //主控板语言版本 0中文 1英文
-    uint8       vmRatio;     //VMC主控板比例因子 1表示分 10表示角  100表示元(上位机忽略)
     uint8       payoutTime;  //超时退币  单位秒  255 表示不退币
     uint8       multBuy;     //多次购买
     uint8       forceBuy;    //强制购买
@@ -109,12 +110,21 @@ typedef struct _st_setup_{
     ST_CARD     card;       //读卡器结构体
     ST_BIN      bin;        //主柜结构体
     ST_BIN      subBin;     //副柜结构体
+    /*以下是与上位机无关的信息*/
+    uint8       vmRatio;     //VMC主控板比例因子 1表示分 10表示角  100表示元(上位机忽略)
 }ST_SETUP;
 
-typedef struct _st_request_{
 
 
-}ST_REQUEST;
+#define PC_CMD_TIMEOUT  1   //PC发送请求超时
+#define PC_CMD_NAK      2   //PC发送请求被VMC拒绝
+#define PC_CMD_BUSY      3  //VMC忙状态，暂不接受PC另外请求
+#define PC_CMD_FAULT      4 //VMC断开通信或者正在初始化，暂不接受PC另外请求
+typedef struct _st_pc_req_{
+    uint8 type; //VMC当前准备处理的请求类型
+    uint8 err;  //请求失败的原因
+
+}ST_PC_REQ;
 
 
 
@@ -129,11 +139,12 @@ typedef struct _st_trade_{
 }ST_TRADE;
 
 
+//状态上报结构体
 typedef struct _st_state_{
-    uint8 state;//VMC当前状态
-    uint8 bill;
-    uint8 coin;
-    uint8 cabinet;
+    uint8 vmcState;//VMC当前状态
+    uint8 billState;
+    uint8 coinState;
+    uint8 cabinetState;
     uint8 billch[8];//纸币找零量
     uint8 coinch[8];//硬币找零量
 
@@ -141,12 +152,33 @@ typedef struct _st_state_{
 
 
 
+//投币金额上报
+typedef struct _st_payin_rpt_{
+    uint8   payin_type;//当前投币类型 0:硬币  1:纸币押钞 2:纸币器暂存 3:纸币器暂出
+    uint32  payin_amount;//当前投币的面值 单位分
+    uint32  reamin_amount;//当前用户投币余额 单位分
+}ST_PAYIN_RPT;
+
+//出币报告
+typedef struct _st_payout_rpt_{
+    uint8   payout_type;//当前出币的类型 0硬币出币 1纸币出币
+    uint32  payout_amount;//当前实际退币金额 单位分
+    uint32  reamin_amount;//退币后当前用户投币余额 单位分
+}ST_PAYOUT_RPT;
+
+
+//VMC当前状态
+#define EV_STATE_DISCONNECT		0    //断开连接
+#define EV_STATE_INITTING		1    //正在初始化
+#define EV_STATE_NORMAL			2    //正常
+#define EV_STATE_FAULT			3    //故障
+#define EV_STATE_MANTAIN		4    //维护
+
+
+
+
 
 #ifndef EV_ANDROID  //安卓平台下不导出这些接口
-
-
-
-
 
 
 /*********************************************************************************************************

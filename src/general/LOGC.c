@@ -9,7 +9,7 @@
  * Licensed under the LGPL v2.1, see the file LICENSE in base directory.
  */
 
-/* ´úÂëºê */
+/* ä»£ç å® */
 #define OFFSET_BUFPTR(_buffer_,_bufptr_,_len_,_buflen_,_remain_len_) \
 	if( _len_ >= 0 && _buflen_+_len_ <= sizeof(_buffer_)-1 ) \
 	{ \
@@ -18,17 +18,16 @@
 		_remain_len_ -= _len_ ; \
 	} \
 
-/* ÈÕÖ¾ÎÄ¼şÃû */
+/* æ—¥å¿—æ–‡ä»¶å */
 TLS char	g_log_pathfilename[ MAXLEN_FILENAME + 1 ] = "" ;
 TLS int		g_log_level = LOGLEVEL_INFO ;
 
 const char log_level_itoa[][6] = { "DEBUG" , "INFO" , "WARN" , "ERROR" , "FATAL" } ;
 
-/* ÉèÖÃÈÕÖ¾ÎÄ¼şÃû */
+/* è®¾ç½®æ—¥å¿—æ–‡ä»¶å */
 void SetLogFile( char *format , ... )
 {
 	va_list		valist ;
-	
 	va_start( valist , format );
 	VSNPRINTF( g_log_pathfilename , sizeof(g_log_pathfilename)-1 , format , valist );
 	va_end( valist );
@@ -43,7 +42,7 @@ void SetLogFileV( char *format , va_list valist )
 	return;
 }
 
-/* ÉèÖÃÈÕÖ¾µÈ¼¶ */
+/* è®¾ç½®æ—¥å¿—ç­‰çº§ */
 void SetLogLevel( int log_level )
 {
 	g_log_level = log_level ;
@@ -51,7 +50,7 @@ void SetLogLevel( int log_level )
 	return;
 }
 
-/* Êä³öÈÕÖ¾ */
+/* è¾“å‡ºæ—¥å¿— */
 static int WriteLogBase( int log_level , char *c_filename , long c_fileline , char *format , va_list valist )
 {
 	char		c_filename_copy[ MAXLEN_FILENAME + 1 ] ;
@@ -66,7 +65,7 @@ static int WriteLogBase( int log_level , char *c_filename , long c_fileline , ch
 	size_t		log_buf_remain_len ;
 	size_t		len ;
 	
-	/* ´¦ÀíÔ´´úÂëÎÄ¼şÃû */
+	/* å¤„ç†æºä»£ç æ–‡ä»¶å */
 	memset( c_filename_copy , 0x00 , sizeof(c_filename_copy) );
 	strncpy( c_filename_copy , c_filename , sizeof(c_filename_copy)-1 );
 	p_c_filename = strrchr( c_filename_copy , '\\' ) ;
@@ -75,7 +74,7 @@ static int WriteLogBase( int log_level , char *c_filename , long c_fileline , ch
 	else
 		p_c_filename = c_filename_copy ;
 
-	/* Ìî³äĞĞÈÕÖ¾ */
+	/* å¡«å……è¡Œæ—¥å¿— */
 #if ( defined __linux__ ) || ( defined __unix ) || ( defined _AIX )
 	gettimeofday( & tv , NULL );
 	localtime_r( &(tv.tv_sec) , & stime );
@@ -113,7 +112,7 @@ static int WriteLogBase( int log_level , char *c_filename , long c_fileline , ch
 	len = SNPRINTF( log_bufptr , log_buf_remain_len , NEWLINE ) ;
 	OFFSET_BUFPTR( log_buffer , log_bufptr , len , log_buflen , log_buf_remain_len );
 	
-	/* Êä³öĞĞÈÕÖ¾ */
+	/* è¾“å‡ºè¡Œæ—¥å¿— */
 	if( g_log_pathfilename[0] == '\0' )
 	{
 		WRITE( 1 , log_buffer , log_buflen );
@@ -237,10 +236,10 @@ static int WriteHexLogBase( int log_level , char *c_filename , long c_fileline ,
 	if( buflen > sizeof(hexlog_buffer) - 1 )
 		return -1;
 	
-	/* Êä³öĞĞÈÕÖ¾ */
+	/* è¾“å‡ºè¡Œæ—¥å¿— */
 	WriteLogBase( log_level , c_filename , c_fileline , format , valist );
 	
-	/* Ìî³äÊ®Áù½øÖÆ¿éÈÕÖ¾ */
+	/* å¡«å……åå…­è¿›åˆ¶å—æ—¥å¿— */
 	memset( hexlog_buffer , 0x00 , sizeof(hexlog_buffer) );
 	hexlog_bufptr = hexlog_buffer ;
 	hexlog_buflen = 0 ;
@@ -300,7 +299,7 @@ static int WriteHexLogBase( int log_level , char *c_filename , long c_fileline ,
 		row_offset++;
 	}
 	
-	/* Êä³öÊ®Áù½øÖÆ¿éÈÕÖ¾ */
+	/* è¾“å‡ºåå…­è¿›åˆ¶å—æ—¥å¿— */
 	if( g_log_pathfilename[0] == '\0' )
 	{
 		WRITE( 1 , hexlog_buffer , hexlog_buflen );

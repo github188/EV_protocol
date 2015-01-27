@@ -12,17 +12,6 @@
 #include "EVprotocol.h"
 
 
-
-#if EV_ANDROID
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "EV_thread", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "EV_thread", __VA_ARGS__))
-#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "EV_thread", __VA_ARGS__))
-#else
-#define LOGI(...) printf(__VA_ARGS__)
-#define LOGW(...) printf(__VA_ARGS__)
-#define LOGE(...) printf(__VA_ARGS__)
-#endif
-
 static pthread_t pid;
 static volatile int g_threadStop = 0;
 
@@ -38,45 +27,52 @@ static void JNI_callBack(const int type,const void *ptr)
 static void *EV_run(void* arg)
 {
     EV_register(JNI_callBack);//注册回调
-    LOGI("thread_fun ready...\n");
+    EV_LOGI("EV_Thread_fun ready...\n");
     while(!g_threadStop)
     {
        EV_task();
     }
     EV_release();
     EV_callBack_handle = NULL;
-    LOGI("JNI Thread stopped....");
+    EV_LOGI("Thread stopped....");
     pid = 0;
     pthread_exit(0);
 
     return NULL;
 }
 
+
+
+
+
 int EV_API EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack)
 {
     void *ret;
     int rst;
+    EV_createLog();
     EV_callBack_handle = callBack;
     EV_closeSerialPort();
-    int fd = EV_openSerialPort(portName,9600,8,'N',1);
-    if (fd < 0){
-            LOGE("Can't Open Serial Port:%s!",portName);
-            return -1;
-    }
-    LOGI("EV_openSerialPort suc.....!\n");
     //串口打开成功  开启线程
     if(pid)//线程已经开启了  关闭线程
     {
-        LOGI("The serialport thread has runing!!!!");
+        EV_LOGI("The serialport thread has runing!!!!");
         g_threadStop = 1;
         pthread_join(pid,&ret);
     }
+
+    int fd = EV_openSerialPort(portName,9600,8,'N',1);
+    if (fd < 0){
+            EV_LOGE("Can't Open Serial Port:%s!",portName);
+            return -1;
+    }
+    EV_LOGI("EV_openSerialPort suc.....!\n");
+
     g_threadStop = 0;
     rst = pthread_create(&pid, NULL, EV_run, NULL);
     if(rst == 0)
         return 1;
     else
-        return 0;
+        return -1;
 }
 
 
@@ -84,7 +80,7 @@ int EV_API EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack)
 
 void EV_API EV_vmcStop()
 {
-    LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
+    EV_LOGI("EV_vmcStop\n");
     g_threadStop = 1;
 }
 
@@ -124,7 +120,7 @@ int EV_API  EV_bentoRegister(char *portName)
     EV_bento_closeSerial();
     int fd = EV_bento_openSerial(portName,9600,8,'N',1);
     if (fd < 0){
-            LOGE("Can't Open Serial Port:%s!",portName);
+            EV_LOGE("Can't Open Serial Port:%s!",portName);
             return -1;
     }
     return 1;
