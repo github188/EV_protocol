@@ -19,6 +19,7 @@ static TIMER_NODE timer_node;
 
 void *EV_timer_run(void *ptr)
 {
+#if 0
     TIMER_NODE *q,*p;
     ST_TIMER *timer;
     if(ptr == NULL)
@@ -50,6 +51,7 @@ void *EV_timer_run(void *ptr)
     }
      printf("pthread_exit\n");
     pthread_exit(0);
+#endif
     return NULL;
 }
 
@@ -58,6 +60,9 @@ void *EV_timer_run(void *ptr)
 //注册定时器100ms的定时器  成功返回定时器ID号  失败返回 -1
 int EV_timer_register(ST_TIMER *timer)
 {
+    timer->id  = 1;
+    return 1;
+#if 0
     int id;
     TIMER_NODE *p,*q,*t;
     if(timer == NULL) return -1;
@@ -96,11 +101,13 @@ int EV_timer_register(ST_TIMER *timer)
     p->next = t;
     printf("register OK\n");
     return timer->id;
+   #endif
 }
 
 //彻底关掉定时器
 void EV_timer_release(const ST_TIMER *timer)
 {
+#if 0
     TIMER_NODE *p = &timer_node,*q,*s;
     if(timer == NULL) return;
     while(p->next != NULL)
@@ -133,27 +140,28 @@ void EV_timer_release(const ST_TIMER *timer)
         timer_pid = 0;
         printf("all timer killed\n");
     }
+#endif
 
 }
 
 
 void EV_timer_stop(ST_TIMER *timer)
 {
+#if 0
     if(timer == NULL) return;
     timer->start = 0;
 
-
+#endif
 }
 
 
 uint8 EV_timer_start(ST_TIMER *timer,uint32 sec)
 {
+#if 0
     if(timer == NULL) return 0;
- //   pthread_mutex_lock(&timer->mutex);
     timer->tick = (sec * 10);
     timer->start = 1;
-  //  pthread_mutex_unlock(&timer->mutex);
-
+#endif
     return 1;
 }
 

@@ -8,7 +8,7 @@
 #include "EV_com.h"
 #include "timer.h"
 #include "ev_config.h"
-static uint8 recvbuf[512],sendbuf[512];
+static uint8 recvbuf[2048],sendbuf[2048];
 static uint8 snNo = 0;
 
 
@@ -197,7 +197,8 @@ uint32 EV_vmGetAmount()
 
 void EV_heart_ISR(void)
 {
-	EV_vmMainFlow(EV_OFFLINE, NULL,0);	
+    EV_LOGD("EV_heart_ISR:");
+    //EV_vmMainFlow(EV_OFFLINE, NULL,0);
 }
 
 
