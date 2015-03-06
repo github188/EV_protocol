@@ -8,7 +8,11 @@
 #include "EV_com.h"
 #include "timer.h"
 #include "ev_config.h"
-static uint8 recvbuf[2048],sendbuf[2048];
+
+static uint8 recvbuf[512],sendbuf[512];
+
+static uint8 serialBuf[2048];
+static uint32 serialIx = 0;
 static uint8 snNo = 0;
 
 
@@ -31,9 +35,10 @@ EV_callBack EV_callBack_fun = NULL;
 /*********************************************************************************************************
 **定时器服务函数 两个定时器 1与VMC通信超时定时器 2PC请求超时定时器
 *********************************************************************************************************/
-//static int timerId_vmc = 0,timerId_pc = 0;
+static int timerId_vmc = 0,timerId_pc = 0;
+static uint8 timer_vmc_timeout = 0,timer_pc_timeout = 0;
 
-static ST_TIMER timer_vmc,timer_pc;
+
 
 
 //设置PC类型
@@ -41,7 +46,7 @@ void EV_set_pc_cmd(const uint8 type)
 { 
 	if(type == EV_NA)
 	{
-        EV_timer_stop(&timer_pc);
+        EV_timer_stop(timerId_pc);
 		pcFlag = PC_REQ_IDLE;
 		pcType = EV_NA;
 	}
@@ -53,7 +58,7 @@ void EV_set_pc_cmd(const uint8 type)
 }
 
 
-uint8	EV_get_pc_cmd()
+uint8 EV_get_pc_cmd()
 {
 	return pcType;
 }
@@ -194,27 +199,21 @@ uint32 EV_vmGetAmount()
 }
 
 
-
+//注意此函数是在定时器线程中运行
 void EV_heart_ISR(void)
 {
     EV_LOGD("EV_heart_ISR:");
+    EV_timer_stop(timerId_vmc);
+    timer_vmc_timeout = 1;
+    //该函数不能再次线程中跑 JNI 蛋疼
     //EV_vmMainFlow(EV_OFFLINE, NULL,0);
 }
 
-
+//注意此函数是在定时器线程中运行
 void EV_pcTimer_ISR(void)//PC请求超时函数
 {
-	EV_set_pc_cmd(EV_NA);
-    EV_LOGI("PC request timeout...!!\n");
-	if(EV_getVmState() == EV_STATE_INITTING)
-	{
-		EV_vmMainFlow(EV_OFFLINE, NULL,0);
-	}
-	else
-	{	
-		EV_vmMainFlow(EV_TIMEOUT, NULL,0);	
-	}
-	
+    EV_timer_stop(timerId_pc);
+    timer_pc_timeout = 1;
 }
 
 
@@ -232,22 +231,27 @@ void EV_callbackhandle(int type,void *ptr)
 
 void EV_COMLOG(int type ,uint8 *data)
 {
-	char buf[256] = {0};
+    static char buf[512] = {0};
+
+    if(data == NULL)
+    {
+        EV_LOGD("EV_COMLOG:data == NULL\n");
+    }
     uint16 i;
-    for(i = 0;i < (data[1] + 2);i++)
+    for(i = 0;i < (data[LEN] + 2);i++)
 		sprintf(&buf[i*3],"%02x ",data[i]);
 
 	if(type == 1)
-		EV_LOGCOM("VM-->PC[%d]:%s\n",data[1],buf);
+        EV_LOGCOM("VM-->PC[%d]:%s\n",data[LEN],buf);
 	else 
-		EV_LOGCOM("PC-->VM[%d]:%s\n",data[1],buf);
+        EV_LOGCOM("PC-->VM[%d]:%s\n",data[LEN],buf);
 }
 
 
 
 
 int EV_getCh(char *ch)
-{
+{  
     return yserial_read(vmc_fd,ch,1);
 }
 
@@ -402,7 +406,8 @@ int EV_send()
 		if(recvbuf[3] == VER_F0_1)
 			EV_replyACK(1);	
 	}
-	EV_vmRpt(mt,recvbuf,recvbuf[LEN]);
+    if(recvbuf[LEN] > 0)
+        EV_vmRpt(mt,recvbuf,recvbuf[LEN]);
 
 	return 1;
 
@@ -411,26 +416,25 @@ int EV_send()
 
 int EV_recv()
 {
-    uint8 ch,ix = 0,len;
+    uint8 ch,ix = 0,len = 0;
     uint16 crc;
-
     if(!yserial_bytesAvailable(vmc_fd))
 		return 0;
+    memset(recvbuf,0,sizeof(recvbuf));
 	EV_getCh((char *)&ch);//HEAD 接受包?
 	if(ch != HEAD_EF)
     {
-        //EV_LOGCOM("EV_recv:%02x != %02x\n",ch,HEAD_EF);
         yserial_clear(vmc_fd);
         return 0;
     }
-	recvbuf[ix++] = ch;//recvbuf[0]	
+    recvbuf[ix++] = ch;//recvbuf[0]
 	EV_getCh((char *)&ch);//len 接收长度
 	if(ch < HEAD_LEN)
     {
         EV_LOGCOM("EV_recv:len = %d < %d\n",ch,HEAD_LEN);
         return 0;
     }
-	recvbuf[ix++] = ch;//recvbuf[1]
+    recvbuf[ix++] = ch;//recvbuf[1]
 	len = ch;
 	//sn:recvbuf[2] + VER_F:recvbuf[3] + MT:recvbuf[4] + data + crc
 	int rcx = 20;
@@ -438,7 +442,7 @@ int EV_recv()
     {
         if(EV_getCh((char *)&ch))
         {
-           recvbuf[ix++] = ch;		  
+           recvbuf[ix++] = ch;
            if(ix >= (len + 2))
                break;
         }
@@ -454,14 +458,14 @@ int EV_recv()
         return 0;
     }
 	
-	crc = EV_crcCheck(recvbuf,len);
+    crc = EV_crcCheck(recvbuf,len);
     if(crc/256 != recvbuf[len] || crc % 256 != recvbuf[len + 1])
     {	
 		EV_LOGCOM("EV_recv:crc = Err\n");
 		return 0;
     }
-	EV_COMLOG(1,recvbuf);
-	EV_send();	//接收到 正确的包	
+    EV_COMLOG(1,recvbuf);
+    EV_send();	//接收到 正确的包
     return 1;
 	
 }
@@ -528,9 +532,9 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 	EV_set_pc_cmd(type);
     EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
-        EV_timer_start(&timer_pc,EV_TIMEROUT_PC_LONG);
+        EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
 	else						//一般为3秒
-        EV_timer_start(&timer_pc,EV_TIMEROUT_PC);
+        EV_timer_start(timerId_pc,EV_TIMEROUT_PC);
 	return 1;
 
 }
@@ -549,14 +553,37 @@ void EV_task()
 {
 	if(EV_recv())
 	{
-        EV_timer_start(&timer_vmc,EV_TIMEROUT_VMC);
+        EV_timer_start(timerId_vmc,EV_TIMEROUT_VMC);
 	}
 	else
 	{
-		EV_msleep(50);
+        EV_msleep(100);
 	}
-		
-	
+
+    #if 0
+    if(timer_vmc_timeout == 1)//通信超时
+    {
+        timer_vmc_timeout = 0;
+        EV_LOGI("timerId_vmc timeout...!!\n");
+        EV_vmMainFlow(EV_OFFLINE, NULL,0);
+    }
+
+    if(timer_pc_timeout == 1)
+    {
+        timer_pc_timeout = 0;
+        EV_LOGI("PC request timeout...!!\n");
+        EV_set_pc_cmd(EV_NA);
+        if(EV_getVmState() == EV_STATE_INITTING)
+        {
+            EV_vmMainFlow(EV_OFFLINE, NULL,0);
+        }
+        else
+        {
+            EV_vmMainFlow(EV_TIMEOUT, NULL,0);
+        }
+    }
+    #endif
+
 }
 
 static uint8 EV_state_rpt(ST_STATE *state,uint8 *data)
@@ -748,7 +775,8 @@ static void EV_payout_rpt(uint8 *data)
 *********************************************************************************************************/
 int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 {
-    uint8	buf[256] = {0},temp = len;
+    uint8	buf[512] = {0},temp = len;
+    EV_LOGD("EV_vmMainFlow:type= %x,len = %d\n",type,len);
 	switch(type)
 	{
 		case EV_NAK_VM:
@@ -923,6 +951,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			break;
 		
 		default:
+
 			break;
 	}
 	return 1;
@@ -941,7 +970,6 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 int	EV_vmRpt(const uint8 type,const uint8 *data,const uint8 len)
 {
     uint8 ev_type = type;
-
 	if(type == EV_POLL)
 	{
 		if(EV_getVmState() == EV_STATE_DISCONNECT)//如果断线了则自动进入初始化流程
@@ -959,13 +987,15 @@ int	EV_vmRpt(const uint8 type,const uint8 *data,const uint8 len)
 				ev_type = EV_CONTROL_RPT;
 				EV_vmMainFlow(ev_type,data,len);
 				return 1;
-			}
-
-			
+			}		
 		}
 	}
+    else
+    {
+        EV_vmMainFlow(type,data,len);
+    }
 
-	EV_vmMainFlow(type,data,len);
+
 	return 1;
 
 }
@@ -1078,25 +1108,21 @@ int EV_closeSerialPort()
 }
 
 
-
 int EV_register(EV_callBack callBack)
 {
-    int ret;
+    int ret,serialId;
 	if(callBack == NULL)
 	{
 		EV_LOGW("The callback is NULL.....\n");
 	}
 	EV_callBack_fun = callBack;
-    timer_vmc.isr = (EV_timerISR)EV_heart_ISR;
-    ret = EV_timer_register(&timer_vmc);
+    timerId_vmc = EV_timer_register(EV_heart_ISR);
     if(ret < 0)
 	{
         EV_LOGE("Timer[timerId_vmc] register failed.....\n");
 		return -1;
 	}
-		
-    timer_pc.isr = (EV_timerISR)EV_pcTimer_ISR;
-    ret = EV_timer_register(&timer_pc);
+    timerId_pc = EV_timer_register(EV_pcTimer_ISR);
     if(ret < 0)
 	{
         EV_LOGE("Timer[timerId_pc] register failed.....\n");
@@ -1106,16 +1132,22 @@ int EV_register(EV_callBack callBack)
     EV_set_pc_cmd(EV_NA);
     st_vm.setup.vmRatio = 10;
     EV_LOGI("EV_register OK.....\n");
+
+
+
 	return 1;
 }
 
 int EV_release()
 {
-    EV_timer_release(&timer_vmc);
-    EV_timer_release(&timer_pc);
+    EV_timer_release(timerId_pc);
+    EV_timer_release(timerId_vmc);
+    timerId_pc = 0;
+    timerId_vmc = 0;
     EV_closeSerialPort();
 	EV_callBack_fun = NULL;
     EV_LOGI("EV_release OK.....");
+
 	return 1;
 }
 

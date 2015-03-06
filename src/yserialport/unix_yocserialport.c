@@ -1,6 +1,5 @@
 #include "unix_yocSerialPort.h"
-
-
+#include "fcntl.h"
 
 
 
@@ -14,7 +13,8 @@
 *********************************************************************************************************/
 int unixserial_open(char *portName)
 {
-    int fd = open(portName, O_RDWR);
+    //O_RDWR|O_NOCTTY|O_NDELAY
+    int fd = open(portName, O_RDWR);//阻塞方式
     if (fd < 0)
     {
         printf("Can't Open Serial Port:%s\n",portName);

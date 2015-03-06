@@ -4,22 +4,24 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <pthread.h>
 #else
 #include <sys/stat.h>
 #include <sys/time.h> //定时器
 #include <signal.h>
+#include <pthread.h>
 #endif
 
+static pthread_t timer_pid;
+static char timerStopped = 1;
 
-
-static pthread_t timer_pid = 0;
-static char timerStopped = 0;
-
+//定义定时器链表
 static TIMER_NODE timer_node;
+static unsigned int timerSum = 1;
+static unsigned char isThreadStarted = 0;
 
 void *EV_timer_run(void *ptr)
 {
-#if 0
     TIMER_NODE *q,*p;
     ST_TIMER *timer;
     if(ptr == NULL)
@@ -27,9 +29,10 @@ void *EV_timer_run(void *ptr)
         pthread_exit(0);
         return NULL;
     }
+
     while(timerStopped == 0)
-    {
-        EV_msleep(100);
+    {      
+        EV_msleep(99);
         p = (TIMER_NODE *)ptr;
         while(p->next != NULL)
         {
@@ -37,59 +40,66 @@ void *EV_timer_run(void *ptr)
             p = q;
             timer = q->timer;
             if(timer == NULL) continue;
-            if(timer->tick) timer->tick--;
+            if(timer->tick)
+            {
+                timer->tick--;
+            }
             else
             {
                 if(timer->isr && timer->start == 1)
-                {
-                    timer->start = 0;
+                {                  
                     timer->isr();
+                    timer->tick = timer->varTick;
                 }
             }
         }
 
     }
-     printf("pthread_exit\n");
+    printf("pthread_exit\n");
     pthread_exit(0);
-#endif
     return NULL;
 }
 
 
 
 //注册定时器100ms的定时器  成功返回定时器ID号  失败返回 -1
-int EV_timer_register(ST_TIMER *timer)
+
+int EV_timer_register(EV_timerISR timer_isr)
 {
-    timer->id  = 1;
-    return 1;
-#if 0
     int id;
     TIMER_NODE *p,*q,*t;
-    if(timer == NULL) return -1;
+    ST_TIMER *st_timer;
     //定时器精度为100毫秒级
-    if(timer_pid == 0)//还没开启线程 线开启定时器线程
+    if(isThreadStarted == 0)//还没开启线程 线开启定时器线程
     {
+        printf("First create thread..\n");
         timer_node.next = NULL;//首节点
         timer_node.timer = NULL;
         timerStopped = 0;
         id = pthread_create(&timer_pid,NULL,EV_timer_run,(void *)&timer_node);
+        printf("After create thread:%d\n",id);
         if(id != 0)
         {
             printf("thread create failed..\n");
             return -1;
-        }
-
+        }    
+        isThreadStarted = 1;
     }
+    //创建一个定时器结构体
+    st_timer = (ST_TIMER *)malloc(sizeof(ST_TIMER));
+    if(st_timer == NULL)
+        return -1;
+    st_timer->start = 0;
+    st_timer->tick = 0;
+    st_timer->id = timerSum++;
+    st_timer->isr = (EV_timerISR)timer_isr;
 
-    timer->start = 0;
-    timer->tick = 0;
-    printf("register....\n");
     //创建一个定时器结构节点
     t = (TIMER_NODE *)malloc(sizeof(TIMER_NODE));
     if(t == NULL)
         return -1;
     t->next = NULL;
-    t->timer = timer;
+    t->timer = st_timer;
     //插入链表
     p = &timer_node;
     while(p->next != NULL)
@@ -99,21 +109,18 @@ int EV_timer_register(ST_TIMER *timer)
         printf("ex_timer:%d\n",p->timer->id);
     }
     p->next = t;
-    printf("register OK\n");
-    return timer->id;
-   #endif
+    printf("register OK:%d\n",st_timer->id);
+    return st_timer->id;
 }
 
 //彻底关掉定时器
-void EV_timer_release(const ST_TIMER *timer)
+void EV_timer_release(int timerId)
 {
-#if 0
     TIMER_NODE *p = &timer_node,*q,*s;
-    if(timer == NULL) return;
     while(p->next != NULL)
     {
         s = p->next;
-        if(s->timer == timer)//找到了定时器
+        if(s->timer->id  == timerId)//找到了定时器
         {
             printf("free timer:%d\n",s->timer->id);
             p->next = s->next;//下下一个定时器
@@ -125,7 +132,6 @@ void EV_timer_release(const ST_TIMER *timer)
             q = p;
             p = q->next;
         }
-
     }
     p = &timer_node;
     while(p->next != NULL)
@@ -137,32 +143,80 @@ void EV_timer_release(const ST_TIMER *timer)
     if(timer_node.next == NULL)//没有定时器了 则杀掉线程
     {
         timerStopped = 1;
-        timer_pid = 0;
+        isThreadStarted = 0;
         printf("all timer killed\n");
     }
-#endif
 
 }
 
 
-void EV_timer_stop(ST_TIMER *timer)
+void EV_timer_stop(int timerId)
 {
-#if 0
-    if(timer == NULL) return;
-    timer->start = 0;
-
-#endif
+    TIMER_NODE *p = &timer_node,*q,*s;
+    while(p->next != NULL)
+    {
+        s = p->next;
+        if(s->timer->id  == timerId)//找到了定时器
+        {
+            printf("free timer:%d\n",s->timer->id);
+            s->timer->start = 0;
+            return;
+        }
+        else
+        {
+            q = p;
+            p = q->next;
+        }
+    }
 }
 
 
-uint8 EV_timer_start(ST_TIMER *timer,uint32 sec)
+
+uint8 EV_timer_isTimeout(int timerId)
 {
-#if 0
-    if(timer == NULL) return 0;
-    timer->tick = (sec * 10);
-    timer->start = 1;
-#endif
+    TIMER_NODE *p = &timer_node,*q,*s;
+    while(p->next != NULL)
+    {
+        s = p->next;
+        if(s->timer->id  == timerId)//找到了定时器
+        {
+            printf("free timer:%d\n",s->timer->id);
+            if(s->timer->tick == 0)
+                return 1;
+            else
+                return 0;
+        }
+        else
+        {
+            q = p;
+            p = q->next;
+        }
+    }
+
     return 1;
+}
+
+
+uint8 EV_timer_start(int timerId,uint32 sec)
+{
+    TIMER_NODE *p = &timer_node,*q,*s;
+    while(p->next != NULL)
+    {
+        s = p->next;
+        if(s->timer->id  == timerId)//找到了定时器
+        {
+            s->timer->varTick = (sec * 10);
+            s->timer->tick = s->timer->varTick;
+            s->timer->start = 1;
+            return 1;
+        }
+        else
+        {
+            q = p;
+            p = q->next;
+        }
+    }
+    return 0;
 }
 
 
