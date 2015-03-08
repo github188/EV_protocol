@@ -252,7 +252,12 @@ void EV_COMLOG(int type ,uint8 *data)
 
 int EV_getCh(char *ch)
 {  
-    return yserial_read(vmc_fd,ch,1);
+    uint8 i = 0;
+    if(yserial_bytesAvailable(vmc_fd) > 0)
+    {
+        i = yserial_read(vmc_fd,ch,1);
+    }
+     return i;
 }
 
 
@@ -418,7 +423,7 @@ int EV_recv()
 {
     uint8 ch,ix = 0,len = 0;
     uint16 crc;
-    if(!yserial_bytesAvailable(vmc_fd))
+    if(yserial_bytesAvailable(vmc_fd) <= 0)
 		return 0;
     memset(recvbuf,0,sizeof(recvbuf));
 	EV_getCh((char *)&ch);//HEAD 接受包?
@@ -559,8 +564,8 @@ void EV_task()
 	{
         EV_msleep(100);
 	}
-
-    #if 0
+    #if 1
+    EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
     {
         timer_vmc_timeout = 0;
