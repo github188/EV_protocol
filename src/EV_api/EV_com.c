@@ -425,41 +425,33 @@ int EV_send()
 
 int EV_recv()
 {
-    uint8 ch,ix = 0,len = 0;
-    uint16 crc;
+    uint8 ch,ix = 0,len = HEAD_LEN;
+
+    uint16 crc,rcx = 50;
     if(yserial_bytesAvailable(vmc_fd) <= 0)
-		return 0;
+		return 0;  
     memset(recvbuf,0,sizeof(recvbuf));
-	EV_getCh((char *)&ch);//HEAD 接受包?
-	if(ch != HEAD_EF)
-    {
-        yserial_clear(vmc_fd);
-        return 0;
-    }
-    recvbuf[ix++] = ch;//recvbuf[0]
-	EV_getCh((char *)&ch);//len 接收长度
-	if(ch < HEAD_LEN)
-    {
-        EV_LOGCOM("EV_recv:len = %d < %d\n",ch,HEAD_LEN);
-        return 0;
-    }
-    recvbuf[ix++] = ch;//recvbuf[1]
-	len = ch;
-	//sn:recvbuf[2] + VER_F:recvbuf[3] + MT:recvbuf[4] + data + crc
-	int rcx = 20;
-    while(rcx > 0) //200ms
+
+    while(rcx)
     {
         if(EV_getCh((char *)&ch))
         {
-           recvbuf[ix++] = ch;
-           if(ix >= (len + 2))
-               break;
+            recvbuf[ix++] = ch;
+            if(ix == (HEAD + 1))
+            {
+                if(ch != HEAD_EF ) return 0;
+            }
+            else if(ix == (LEN + 1))
+                len = ch;
+            else if(ix >= (len + 2))
+                break;
         }
-		else
-		{
+        else
+        {
             EV_msleep(10);
-			rcx--;
-		}
+            rcx--;
+        }
+
     }
 	if(rcx <= 0)
     {
@@ -568,8 +560,7 @@ void EV_task()
 	{
         EV_timer_start(timerId_vmc,EV_TIMEROUT_VMC);
     }
-
-    EV_msleep(100);
+    EV_msleep(50);
     #if 1
     //EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
@@ -834,7 +825,6 @@ static void EV_payout_rpt(uint8 *data)
         (EV_get_pc_cmd() == EV_CONTROL_REQ && EV_getSubcmd() == 6))
     {
         EV_set_pc_cmd(EV_NA);
-
         EV_callbackhandle(EV_PAYOUT_RPT,&payout);
     }
 	
@@ -1026,6 +1016,8 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		
         case EV_COLUMN_RPT:
             EV_LOGFLOW("EV_COLUMN_RPT\n");
+            if(EV_get_pc_cmd() == EV_COLUMN_REQ)
+                EV_set_pc_cmd(EV_NA);
             EV_column_rpt(recvbuf);
 
             break;
