@@ -253,10 +253,14 @@ void EV_COMLOG(int type ,uint8 *data)
 int EV_getCh(char *ch)
 {  
     uint8 i = 0;
+#ifdef EV_WIN32
+    i = yserial_read(vmc_fd,ch,1);
+#else
     if(yserial_bytesAvailable(vmc_fd) > 0)
     {
         i = yserial_read(vmc_fd,ch,1);
     }
+#endif
      return i;
 }
 
@@ -538,6 +542,10 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
     EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
         EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
+    else if(type == CONTROL_IND && sendbuf[MT + 1] == 6)//找零
+        EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
+    else if(type == PAYOUT_IND)//找零
+        EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
 	else						//一般为3秒
         EV_timer_start(timerId_pc,EV_TIMEROUT_PC);
 	return 1;
@@ -559,13 +567,11 @@ void EV_task()
 	if(EV_recv())
 	{
         EV_timer_start(timerId_vmc,EV_TIMEROUT_VMC);
-	}
-	else
-	{
-        EV_msleep(100);
-	}
+    }
+
+    EV_msleep(100);
     #if 1
-    EV_LOGD("EV_task....");
+    //EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
     {
         timer_vmc_timeout = 0;
@@ -703,29 +709,13 @@ static void EV_setup_rpt(ST_SETUP *setup,uint8 *data)
 }
 
 
-static void EV_payin_rpt(uint8 *data)
-{
-    uint8 index = MT + 1,temp = 0;
-    uint32 temp32;
-    ST_PAYIN_RPT payin;
 
-    payin.payin_type = data[index++];//bill or coin
-    temp32 = INTEG16(data[index ++],data[index ++]);
-    payin.payin_amount = EV_amountFromVM(temp32);
-
-    temp32 = INTEG16(data[index + 0],data[index + 1]);
-    index += 2;
-    payin.reamin_amount = EV_amountFromVM(temp32);
-	st_vm.remainAmount = EV_amountFromVM(temp32);
-    EV_callbackhandle(EV_PAYIN_RPT,&payin);
-}
 
 
 static void EV_trade_rpt(ST_TRADE *trade,uint8 *data)
 {
     uint8 index = MT + 1;
     uint32 temp;
-
     trade->cabinet = data[index++];
     trade->result = data[index++];
     trade->column = data[index++];
@@ -743,29 +733,108 @@ static void EV_trade_rpt(ST_TRADE *trade,uint8 *data)
 
 }
 
+//解析VMC货道获取
+static void EV_column_rpt(uint8 *data)
+{
+    uint8 index = MT + 1,i,j,temp,temp1;
+    uint32 sum = 0;
+    ST_COLUMN_RPT column;
+    struct ST_COLUMN *hd,*p;
 
+    column.head.next = NULL;
+    p = &column.head;
+
+    column.cabinet_no  = data[index++];
+
+    for(i = 0;i < 8;i++)
+    {
+        for(j = 0;j < 10;j++)
+        {
+            temp = data[index++];
+            temp1 = temp & 0x3F;
+            temp = (temp >> 6) & 0x03;
+            if(temp == 2)//货道不存在
+                continue;
+            //创建货到链表
+            hd = (struct ST_COLUMN  *)malloc(sizeof(struct ST_COLUMN));
+            if(hd == NULL)
+            {
+                EV_LOGE("EV_column_rpt:malloc err!!!!!\n");
+                return;
+            }
+            hd->next = NULL;
+            hd->no = (j < 9) ? (i + 1) * 10 + j + 1 : (i + 1) * 10;
+
+            if(temp == 0)//正常
+                hd->state = (temp1 == 0) ? 2 : 0;
+            else if(temp == 1)//故障
+                hd->state = 1;
+            else //暂不可用
+                hd->state = 3;
+
+            sum++;
+            p->next = hd;//插入链表
+            p = hd;
+        }
+    }
+
+    column.sum = sum;
+    column.type = 1;
+
+    EV_callbackhandle(EV_COLUMN_RPT,&column);
+
+}
+
+
+static void EV_payin_rpt(uint8 *data)
+{
+    uint8 index = MT + 1;
+    uint32 temp32;
+    ST_PAYIN_RPT payin;
+    if(data == NULL)
+    {
+        EV_LOGD("EV_payin_rpt data == NULL!!!!\n");
+        return;
+    }
+
+    payin.payin_type = data[index++];//bill or coin
+    temp32 = INTEG16(data[index ++],data[index ++]);
+    payin.payin_amount = EV_amountFromVM(temp32);
+
+    temp32 = INTEG16(data[index + 0],data[index + 1]);
+    index += 2;
+    payin.reamin_amount = EV_amountFromVM(temp32);
+    st_vm.remainAmount = EV_amountFromVM(temp32);
+    EV_callbackhandle(EV_PAYIN_RPT,&payin);
+}
 
 static void EV_payout_rpt(uint8 *data)
 {
     uint8 index = MT + 1,temp = 0;
     uint32 temp32;
     ST_PAYOUT_RPT payout;
+
+    if(data == NULL)
+    {
+        EV_LOGD("EV_payout_rpt data == NULL!!!!\n");
+        return;
+    }
     payout.payout_type = data[index++];//bill or coin
-	
     temp32 = INTEG16(data[index ++],data[index ++]);
     payout.payout_amount = EV_amountFromVM(temp32);
 
     temp32 = INTEG16(data[index + 0],data[index + 1]);
     index += 2;
     payout.reamin_amount = EV_amountFromVM(temp32);
-	st_vm.remainAmount = EV_amountFromVM(temp32);
+    st_vm.remainAmount = EV_amountFromVM(temp32);
 
-	temp = data[index++];
+    temp = data[index++];
 
     if(EV_get_pc_cmd() == EV_PAYOUT_REQ ||
         (EV_get_pc_cmd() == EV_CONTROL_REQ && EV_getSubcmd() == 6))
     {
         EV_set_pc_cmd(EV_NA);
+
         EV_callbackhandle(EV_PAYOUT_RPT,&payout);
     }
 	
@@ -928,7 +997,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			break;
 		case EV_PAYOUT_RPT:
             EV_LOGFLOW("EV_PAYOUT_RPT\n");
-			EV_payout_rpt(recvbuf);	
+            EV_payout_rpt(recvbuf);
 			break;
 		
 		case EV_BUTTON_RPT://按键上报
@@ -955,6 +1024,11 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			EV_callbackhandle(EV_BUTTON_RPT,buf);
 			break;
 		
+        case EV_COLUMN_RPT:
+            EV_LOGFLOW("EV_COLUMN_RPT\n");
+            EV_column_rpt(recvbuf);
+
+            break;
 		default:
 
 			break;
@@ -1024,19 +1098,29 @@ int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost)
     return EV_pcRequest(VENDOUT_IND,1,buf,ix);
 }
 
-
+//找零指示
 int EV_pcPayout(int value)
 {
     uint8 buf[20],ix = 0;
     uint32 temp = EV_amountToVM(value);
     EV_LOGI("temp= %d\n",temp);
-	buf[ix++] = 6;//找零指令
+    buf[ix++] = 0;//
+    buf[ix++] = HUINT16(temp);
+    buf[ix++] = LUINT16(temp);
     buf[ix++] = 0;
-    buf[ix++] = 0;
-	EV_setSubcmd(6);
-    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
+    return EV_pcRequest(EV_PAYOUT_REQ,1,buf,ix);
 }
 
+//退币指示
+int EV_pcPayback()
+{
+    uint8 buf[20],ix = 0;
+    buf[ix++] = 6;//找零指令
+    buf[ix++] = 0;
+    buf[ix++] = 0;
+    EV_setSubcmd(6);
+    return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
+}
 
 
 //直接返回 不用回调
@@ -1078,6 +1162,16 @@ int32 EV_set_date(ST_DATE *date)
     return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
+
+
+
+//获取柜子中所有货道属性
+int32 EV_get_column(int cabinet)
+{
+    uint8 buf[10];
+    buf[0] = (uint8)cabinet;
+    return EV_pcRequest(EV_COLUMN_REQ,0,buf,1);
+}
 
 
 

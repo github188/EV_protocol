@@ -247,20 +247,17 @@ void unixserial_setBaudRate(int fd, BaudRateType baudRate)
 uint32 unixserial_bytesAvailable(int fd)
 {
     static struct timeval timeout;
-    //int bytesQueued;
     fd_set fileSet;
     FD_ZERO(&fileSet);
     FD_SET(fd, &fileSet);
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    //int n=select(fd + 1, &fileSet, NULL, &fileSet, &timeout);
     int n=select(fd + 1, &fileSet, NULL, NULL, &timeout);
     if (n <= 0) {
         return 0;
     }
-    if(FD_ISSET(fd,fileSet))//证明有数据可读
+    if(FD_ISSET(fd,&fileSet))//证明有数据可读
     {
-        //int r = ioctl(fd, FIONREAD, &bytesQueued);
         return 1;
     }
     return 0;

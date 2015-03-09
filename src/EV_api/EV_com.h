@@ -58,7 +58,7 @@
 
 #define EV_TIMEROUT_VMC  10  //10秒超时
 #define EV_TIMEROUT_PC   10  //30秒超时
-#define EV_TIMEROUT_PC_LONG   90  //30秒超时
+#define EV_TIMEROUT_PC_LONG   120  //30秒超时
 
 
 
@@ -68,9 +68,12 @@ typedef struct _st_vm_data_{
     ST_PC_REQ pcReq;
     //实时状态
     ST_STATE state;
-    //uint8 state;
+    ST_PAYOUT_RPT payout;
+    ST_COLUMN_RPT column;
     uint8 lastState;
     uint32 remainAmount;//当前投币余额
+
+
 
 
 }ST_VM_DATA;
@@ -104,8 +107,11 @@ void EV_task();
 uint32 EV_vmGetAmount();
 int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost);
 int EV_pcPayout(int value);
+int EV_pcPayback();
 uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
 int32 EV_set_date(ST_DATE *date);
+int32 EV_get_column(int cabinet);
+
 int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag);
 int32 EV_cash_control(uint8 flag);
 uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len);

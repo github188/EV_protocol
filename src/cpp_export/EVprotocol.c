@@ -210,3 +210,9 @@ int EV_API EV_setDate(const void *date)
     return EV_set_date((ST_DATE *)date);
 }
 
+int EV_API EV_getColumn(int cabinet)
+{
+    return EV_get_column(cabinet);
+}
+
+

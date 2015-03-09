@@ -40,13 +40,15 @@ void JNI_json_insert_str(json_t *json,char *label,char *value)
 
 void JNI_json_insert_int(json_t *json,char *label,long value)
 {
-	json_t *j_label,*j_value;
+    json_t *j_label,*j_value;
 	char buf[10] = {0};
 	if(label == NULL || json == NULL )
 		return;
 	sprintf(buf,"%ld",value);
 	j_label = json_new_string(label);
 	j_value = json_new_number(buf);
+
+
 	json_insert_child(j_label,j_value);
 	json_insert_child(json,j_label);
 }
@@ -96,6 +98,61 @@ json_t *JNI_payout_rpt(const void *ptr)
     label = json_new_string(JSON_HEAD);
     json_insert_child(label,entry);
     json_insert_child(root,label);
+    return root;
+}
+
+static json_t *JNI_column_rpt(const void *ptr)
+{
+    ST_COLUMN_RPT *column;
+    struct ST_COLUMN *p,*q;
+    json_t *root,*entry,*label,*arr;
+    if(ptr == NULL)
+    {
+        EV_LOGE("JNI_column_rpt:ptr = NULL!!!\n");
+        return NULL;
+    }
+    column = (ST_COLUMN_RPT *)ptr;
+    p = (struct ST_COLUMN *)&column->head;
+
+    root = json_new_object();
+    entry = json_new_object();
+    arr = json_new_array();
+
+
+    JNI_json_insert_str(entry,JSON_TYPE,"EV_COLUMN_RPT");
+    JNI_json_insert_int(entry,"cabinet",column->cabinet_no);
+    JNI_json_insert_int(entry,"type",column->type);
+    JNI_json_insert_int(entry,"sum",column->sum);
+
+    //遍历链表
+    while(p->next != NULL)
+    {
+        q = p->next;
+        label = json_new_object();
+        JNI_json_insert_int(label,"no",q->no);
+        JNI_json_insert_int(label,"state",q->state);
+        json_insert_child(arr,label);
+        p = q;
+
+    }
+
+    //清理链表
+    while(p->next != NULL)
+    {
+        q = p->next;
+        free(p);
+        p = q;
+    }
+
+    label = json_new_string("column");
+    json_insert_child(label,arr);
+    json_insert_child(entry,label);
+
+    label = json_new_string(JSON_HEAD);
+    json_insert_child(label,entry);
+    json_insert_child(root,label);
+    return root;
+
 }
 
 json_t *JNI_request_rpt(const void *ptr)
@@ -250,9 +307,7 @@ static void JNI_callBack(const int type,const void *ptr)
 	jstring msg;
 	char *text;
     uint8 *data;
-	ST_VM_DATA *vm_ptr;
     json_t *root = NULL, *entry = NULL, *label;
-
 	switch(type)
 	{
 		case EV_SETUP_REQ:
@@ -337,6 +392,9 @@ static void JNI_callBack(const int type,const void *ptr)
 			json_insert_child(root,label);
 			
 			break;
+        case EV_COLUMN_RPT:
+            root = JNI_column_rpt(ptr);
+            break;
 		default:
 			break;
 	}
@@ -488,7 +546,6 @@ Java_com_easivend_evprotocol_EVprotocol_trade
   (JNIEnv *env, jobject obj,jint cabinet, jint column, jint type, jint cost)
 {
 	jint ret;
-   // EV_LOGI("cabinet=%d coulmn=%d type =%d  cost=%d",cabinet,column,type,cost);
     ret = EV_pcTrade(cabinet,column,type,cost);
 	return ret;
 }
@@ -499,10 +556,29 @@ Java_com_easivend_evprotocol_EVprotocol_payout
   (JNIEnv *env, jobject cls,jlong value)
 {
 	jint ret;
-    //uint32 temp = (uint32)value;
-    ret = EV_pcPayout(1);
+    ret = EV_pcPayout(value);
 	return ret;
 }
+
+JNIEXPORT jint JNICALL
+Java_com_easivend_evprotocol_EVprotocol_payback
+  (JNIEnv *env, jobject cls)
+{
+    jint ret;
+    ret = EV_pcPayback();
+    return ret;
+}
+
+
+JNIEXPORT jint JNICALL
+Java_com_easivend_evprotocol_EVprotocol_getColumn
+  (JNIEnv *env, jobject cls,jint cabinet)
+{
+    jint ret;
+    ret = EV_get_column(cabinet);
+    return ret;
+}
+
 
 
 
