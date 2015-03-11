@@ -131,7 +131,7 @@ typedef struct _st_pc_req_{
 typedef struct _st_trade_{
     uint8 cabinet;
     uint8 column;
-    uint8 result;
+    uint8 result;//0成功 非0不成功
     uint8 type;
     uint8 cost;
     uint32 remainAmount;
@@ -190,9 +190,13 @@ typedef struct _st_column_rpt_{
 #define EV_STATE_INITTING		1    //正在初始化
 #define EV_STATE_NORMAL			2    //正常
 #define EV_STATE_FAULT			3    //故障
+
+
 #define EV_STATE_MANTAIN		4    //维护
 
 
+#define EV_MODEL_MANTAIN		1    //维护模式
+#define EV_MODEL_RUN            0  //运行模式
 
 
 
@@ -223,6 +227,7 @@ EV_EXPORT int   EV_API  EV_vmcStart(char *portName,EV_CALLBACK_HANDLE callBack);
 EV_EXPORT void  EV_API  EV_vmcStop();
 EV_EXPORT int   EV_API  EV_trade(int cabinet,int column,int type,long cost);
 EV_EXPORT int   EV_API  EV_payout(long value);
+EV_EXPORT int   EV_API  EV_payback();
 EV_EXPORT int   EV_API  EV_getStatus();
 EV_EXPORT long  EV_API  EV_getRemainAmount();
 EV_EXPORT int   EV_API  EV_bentoRegister(char *portName);

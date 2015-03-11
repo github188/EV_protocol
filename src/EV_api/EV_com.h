@@ -50,9 +50,10 @@
 
 
 
-#define PC_REQ_IDLE		0
-#define PC_REQ_SENDING	1
-#define PC_REQ_HANDLING	2
+#define PC_REQ_IDLE         0  //空闲可以接受指令
+#define PC_REQ_SENDREADY    3 //准备发送
+#define PC_REQ_SENDING      1  //正在发送
+#define PC_REQ_HANDLING     2  //正在处理
 
 
 
@@ -66,16 +67,11 @@ typedef struct _st_vm_data_{
     ST_SETUP setup;
     ST_TRADE trade;
     ST_PC_REQ pcReq;
-    //实时状态
     ST_STATE state;
     ST_PAYOUT_RPT payout;
     ST_COLUMN_RPT column;
     uint8 lastState;
     uint32 remainAmount;//当前投币余额
-
-
-
-
 }ST_VM_DATA;
 
 
@@ -90,31 +86,33 @@ typedef struct _st_date_{
 }ST_DATE;
 
 
-
-
-
-
 typedef void (*EV_callBack)(const int,const void *);
+
 int EV_closeSerialPort();
 int EV_openSerialPort(char *portName,int baud,int databits,char parity,int stopbits);
 int EV_register(EV_callBack callBack);
 int EV_release();
+
 int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len);
 int EV_vmRpt(const uint8 type,const uint8 *data,const uint8 len);
 
-uint8 EV_getVmState();
 void EV_task();
+uint8 EV_getVmState();
 uint32 EV_vmGetAmount();
+
 int EV_pcTrade(uint8 cabinet,uint8 column,uint8 type,uint32 cost);
 int EV_pcPayout(int value);
 int EV_pcPayback();
-uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
+
 int32 EV_set_date(ST_DATE *date);
 int32 EV_get_column(int cabinet);
 
 int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag);
 int32 EV_cash_control(uint8 flag);
-uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
+
+uint32 EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
+uint32 EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len);
+
 uint32 EV_amountFromVM(const uint32 value);
 uint32 EV_amountToVM(const uint32 value);
 #endif

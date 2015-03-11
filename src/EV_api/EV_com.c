@@ -1,34 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/time.h> //定时器
 #include <string.h>
-#include <fcntl.h>
 #include "EV_com.h"
 #include "timer.h"
 #include "ev_config.h"
 
 static uint8 recvbuf[512],sendbuf[512];
-
-static uint8 serialBuf[2048];
-static uint32 serialIx = 0;
 static uint8 snNo = 0;
 
 
 static ST_VM_DATA st_vm; 
 
-
-
-
 volatile uint8 pcLock;//PC请求互斥锁
 volatile uint8 pcType,pcsubType;//PC请求类型 0表示无请求标志空闲
 volatile uint8 pcFlag;//VMC 0空闲 1需要发送请求  2正在处理请求
 
-static uint8 vm_state = EV_STATE_DISCONNECT,last_vm_state = EV_STATE_DISCONNECT;
+
+static uint8 vmState = EV_STATE_DISCONNECT,lastVmState = EV_STATE_DISCONNECT;
+
 static Y_FD  vmc_fd;
 static char  vmc_port[128] = {0};
-
 EV_callBack EV_callBack_fun = NULL;
 
 
@@ -42,7 +34,7 @@ static uint8 timer_vmc_timeout = 0,timer_pc_timeout = 0;
 
 
 //设置PC类型
-void EV_set_pc_cmd(const uint8 type)
+void EV_setPCcmd(const uint8 type)
 { 
 	if(type == EV_NA)
 	{
@@ -58,56 +50,59 @@ void EV_set_pc_cmd(const uint8 type)
 }
 
 
-uint8 EV_get_pc_cmd()
+uint8 EV_getPCcmd()
 {
 	return pcType;
 }
 
 
 
-void EV_setSubcmd(uint8 type)
+void EV_setPCSubcmd(uint8 type)
 {
 	pcsubType = type;
 
 }
 
 
-uint8 EV_getSubcmd()
+uint8 EV_getPCSubcmd()
 {
 	return pcsubType;
 }
 
-void EV_set_pc_flag(uint8 flag)
+void EV_setPCFlag(uint8 flag)
 {
 	pcFlag = flag;
 }
 
-uint8 EV_get_pc_flag()
+uint8 EV_getPCFlag()
 {
 	return pcFlag;
 }
 
-
-
 void EV_setVmState(const uint8 type)
 {
-	last_vm_state = vm_state; 
-	vm_state = type;
-    st_vm.state.vmcState = vm_state;
-	st_vm.lastState = last_vm_state;
+    if(type == EV_STATE_FAULT && vmState == EV_STATE_MANTAIN)//状态是维护 不更改 为故障
+    {
+        EV_LOGI("type == EV_STATE_FAULT && vmState == EV_STATE_MANTAIN\n");
+        return;
+    }
+    lastVmState = vmState;
+    vmState = type;
+    st_vm.state.vmcState = vmState;
+    st_vm.lastState = lastVmState;
 }
 
 
 uint8 EV_getVmState()
 {
-	return vm_state;
+    return vmState;
 }
 
 
-uint8	EV_getLastVmState()
-{
-	return last_vm_state;
-}
+//uint8	EV_getLastVmState()
+//{
+//	return last_vm_state;
+//}
 
 
 //将VM获取的金额转换为分
@@ -136,7 +131,6 @@ uint32 EV_amountToVM(const uint32 value)
 *********************************************************************************************************/
 uint8 EV_pcEncodAmount(uint32 amount)
 {
-
     unsigned char i = 0,value;
     if(amount == 0)
         return 0;
@@ -223,6 +217,7 @@ void EV_pcTimer_ISR(void)//PC请求超时函数
 
 void EV_callbackhandle(int type,void *ptr)
 {
+
 	if(EV_callBack_fun != NULL)
 		EV_callBack_fun(type,ptr);
 }
@@ -266,7 +261,13 @@ int EV_getCh(char *ch)
 
 
 
-
+/*********************************************************************************************************
+** Function name	:		EV_replyACK
+** Descriptions		:		PC回应ACK包
+** input parameters	:
+** output parameters:		无
+** Returned value	:		0 失败 1成功
+*********************************************************************************************************/
 void EV_replyACK(const uint8 flag)
 {
     uint8 pc_ack,ix = 0,buf[10] = {0};
@@ -275,7 +276,7 @@ void EV_replyACK(const uint8 flag)
 	buf[ix++] = HEAD_LEN;
 	buf[ix++] = snNo;
 	buf[ix++] = VER_F0_0;
-	buf[ix++] = pc_ack;
+    buf[ix++] = pc_ack;
     uint16 crc = EV_crcCheck(buf,ix);
 	buf[ix++] = crc / 256;
 	buf[ix++] = crc % 256;
@@ -297,10 +298,11 @@ uint8 EV_recvACK()
            buf[ix++] = ch;
            if(ix >= (HEAD_LEN + 2))
 		   {
-				if(buf[4] == POLL)
+                if(buf[MT] == POLL)
 				{
 					EV_COMLOG(1, buf);
-					EV_replyACK(1);ix = 0;
+                    EV_replyACK(1);
+                    ix = 0;
 				}	
 				else
 					break;
@@ -308,7 +310,7 @@ uint8 EV_recvACK()
         }
 		else
 		{
-			EV_msleep(10);
+            EV_msleep(10);
 			timeout--;
 		}
 	}
@@ -323,7 +325,7 @@ uint8 EV_recvACK()
 		return 0;
     }
 	EV_COMLOG(1, buf);
-	return buf[4];
+    return buf[MT];
 }
 
 
@@ -339,9 +341,9 @@ uint8 EV_recvACK()
 int EV_sendReq()
 {
     uint8 i;
-    uint8	len = sendbuf[1];//重定位发送包校验值
+    uint8 len = sendbuf[LEN];//重定位发送包校验值
     uint8 rAck;
-	sendbuf[2] = snNo;
+    sendbuf[SN] = snNo;
     uint16 crc = EV_crcCheck(sendbuf,len);
 	sendbuf[len + 0] = crc / 256;
 	sendbuf[len + 1] = crc % 256;	
@@ -349,13 +351,12 @@ int EV_sendReq()
 	{
         yserial_write(vmc_fd,(const char *)sendbuf,len + 2);
 		EV_COMLOG(2,sendbuf);//输出发送日志
-
 		if(sendbuf[VF] == VER_F0_1) //需要回应ACK
 		{
             rAck = EV_recvACK();
 			if(rAck == ACK_RPT)//对于短时间的 ACK处理
 			{
-				EV_set_pc_flag(PC_REQ_HANDLING);
+                EV_setPCFlag(PC_REQ_HANDLING);
 				EV_vmRpt(EV_ACK_VM,NULL,0);
 				return 1;
 			}
@@ -363,18 +364,23 @@ int EV_sendReq()
 			{
 				EV_vmRpt(EV_NAK_VM,NULL,0);
 				return 1;
-			}
+            }
+            else
+            {
+                if(EV_getPCcmd() == EV_TRADE_REQ)//若是出货命令则忽略ACK
+                {
+                    EV_setPCFlag(PC_REQ_HANDLING);
+                    return 1;
+                }
+            }
 		}
 		else
 		{
-			EV_set_pc_cmd(EV_NA);
+            EV_setPCcmd(EV_NA);
 			return 1;
-		}
-			
-		EV_msleep(500);
-		
+		}			
+		EV_msleep(500);		
 	}	
-
 	//发送失败
 	EV_vmRpt(EV_NAK_VM,NULL,0);
 	return 0;
@@ -402,12 +408,12 @@ int EV_send()
         return 1;
     }
 	snNo = recvbuf[SN];
+    //可以发送请求
 	if((mt == POLL) || (mt == ACTION_RPT && recvbuf[HEAD_LEN] == 5 && recvbuf[HEAD_LEN + 1] == 0x01))
 	{
-		if(EV_get_pc_flag() == PC_REQ_SENDING)
+        if(EV_getPCFlag() == PC_REQ_SENDING)
 			EV_sendReq();
-		else
-		if(recvbuf[3] == VER_F0_1)
+        else if(recvbuf[3] == VER_F0_1)
 			EV_replyACK(1);	
 	}
 	else 
@@ -415,23 +421,30 @@ int EV_send()
 		if(recvbuf[3] == VER_F0_1)
 			EV_replyACK(1);	
 	}
-    if(recvbuf[LEN] > 0)
-        EV_vmRpt(mt,recvbuf,recvbuf[LEN]);
+
+    EV_vmRpt(mt,recvbuf,recvbuf[LEN]);
 
 	return 1;
 
 
 }
 
+
+
+/*********************************************************************************************************
+** Function name	:		EV_recv
+** Descriptions		:		PC串口收包函数接口
+** input parameters	:
+** output parameters:		无
+** Returned value	:		0 失败 1成功
+*********************************************************************************************************/
 int EV_recv()
 {
     uint8 ch,ix = 0,len = HEAD_LEN;
-
     uint16 crc,rcx = 50;
     if(yserial_bytesAvailable(vmc_fd) <= 0)
 		return 0;  
     memset(recvbuf,0,sizeof(recvbuf));
-
     while(rcx)
     {
         if(EV_getCh((char *)&ch))
@@ -451,16 +464,14 @@ int EV_recv()
             EV_msleep(10);
             rcx--;
         }
-
     }
-	if(rcx <= 0)
+    if(rcx == 0)
     {
 		EV_LOGCOM("EV_recv:timeout!\n");
         return 0;
     }
-	
     crc = EV_crcCheck(recvbuf,len);
-    if(crc/256 != recvbuf[len] || crc % 256 != recvbuf[len + 1])
+    if(crc != INTEG16(recvbuf[len],recvbuf[len + 1]))
     {	
 		EV_LOGCOM("EV_recv:crc = Err\n");
 		return 0;
@@ -481,19 +492,23 @@ int EV_recv()
 *********************************************************************************************************/
 uint32	EV_pcRequest(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 {
-    uint8 temp = EV_getVmState();
+    uint8 temp;
     ST_PC_REQ req;
+
+    temp = EV_getVmState();
     if(temp == EV_STATE_DISCONNECT || temp == EV_STATE_INITTING)
     {
-        req.type = EV_get_pc_cmd();
+        EV_LOGW("temp == EV_STATE_DISCONNECT || temp == EV_STATE_INITTING...");
+        req.type = EV_getPCcmd();
         req.err = PC_CMD_FAULT;
         EV_callbackhandle(EV_REQUEST_FAIL,&req);
         return 0;
     }
 
-    if(EV_get_pc_flag() != PC_REQ_IDLE)
+    if(EV_getPCFlag() != PC_REQ_IDLE)
     {
-        req.type = EV_get_pc_cmd();
+        EV_LOGW("EV_get_pc_flag() != PC_REQ_IDLE");
+        req.type = EV_getPCcmd();
         req.err = PC_CMD_BUSY;
         EV_callbackhandle(EV_REQUEST_FAIL,&req);
         return 0;
@@ -516,11 +531,13 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 {
     uint8	ix = 0;
 	int i;
-	if(EV_get_pc_flag() != PC_REQ_IDLE)
+    if(EV_getPCFlag() != PC_REQ_IDLE)
 	{
 		EV_LOGW("EV_pcReqSend send failed,anther request...");
 		return 0;//如果有请求则退出
 	}
+
+    EV_setPCFlag(PC_REQ_SENDREADY);
 	sendbuf[ix++] = HEAD_EF;
 	sendbuf[ix++] = len + HEAD_LEN;
 	sendbuf[ix++] = 0;//预留
@@ -530,7 +547,7 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
 	{
 		sendbuf[ix++] = data[i];
 	}
-	EV_set_pc_cmd(type);
+    EV_setPCcmd(type);
     EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
         EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
@@ -561,7 +578,7 @@ void EV_task()
         EV_timer_start(timerId_vmc,EV_TIMEROUT_VMC);
     }
     EV_msleep(50);
-    #if 1
+
     //EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
     {
@@ -574,7 +591,7 @@ void EV_task()
     {
         timer_pc_timeout = 0;
         EV_LOGI("PC request timeout...!!\n");
-        EV_set_pc_cmd(EV_NA);
+        EV_setPCcmd(EV_NA);
         if(EV_getVmState() == EV_STATE_INITTING)
         {
             EV_vmMainFlow(EV_OFFLINE, NULL,0);
@@ -584,28 +601,17 @@ void EV_task()
             EV_vmMainFlow(EV_TIMEOUT, NULL,0);
         }
     }
-    #endif
+
 
 }
 
 static uint8 EV_state_rpt(ST_STATE *state,uint8 *data)
 {
-    uint8 lastState;
     if(data[HEAD_LEN] & 0x03)
         EV_setVmState(EV_STATE_FAULT);
     else
         EV_setVmState(EV_STATE_NORMAL);
-
-    lastState = EV_getLastVmState();
-    if(lastState == EV_STATE_MANTAIN)//状态是维护 不更改
-    {
-        EV_setVmState(EV_STATE_MANTAIN);
-        return 1;
-    }
-    else if(lastState == EV_STATE_INITTING)
-        return 0;
-    else
-        return 1;
+    return 1;
 
 }
 
@@ -730,11 +736,11 @@ static void EV_column_rpt(uint8 *data)
     uint8 index = MT + 1,i,j,temp,temp1;
     uint32 sum = 0;
     ST_COLUMN_RPT column;
-    struct ST_COLUMN *hd,*p;
+    struct ST_COLUMN *hd,*p,*q;
 
-    column.head.next = NULL;
+
     p = &column.head;
-
+    column.head.next = NULL;
     column.cabinet_no  = data[index++];
 
     for(i = 0;i < 8;i++)
@@ -774,6 +780,14 @@ static void EV_column_rpt(uint8 *data)
 
     EV_callbackhandle(EV_COLUMN_RPT,&column);
 
+    //清理链表
+    while(p->next != NULL)
+    {
+        q = p->next;
+        free(p);
+        p = q;
+    }
+
 }
 
 
@@ -789,7 +803,8 @@ static void EV_payin_rpt(uint8 *data)
     }
 
     payin.payin_type = data[index++];//bill or coin
-    temp32 = INTEG16(data[index ++],data[index ++]);
+    temp32 = INTEG16(data[index + 0],data[index + 1]);
+    index +=2;
     payin.payin_amount = EV_amountFromVM(temp32);
 
     temp32 = INTEG16(data[index + 0],data[index + 1]);
@@ -801,33 +816,24 @@ static void EV_payin_rpt(uint8 *data)
 
 static void EV_payout_rpt(uint8 *data)
 {
-    uint8 index = MT + 1,temp = 0;
+    uint8 index = MT + 1;
     uint32 temp32;
     ST_PAYOUT_RPT payout;
-
     if(data == NULL)
     {
         EV_LOGD("EV_payout_rpt data == NULL!!!!\n");
         return;
     }
     payout.payout_type = data[index++];//bill or coin
-    temp32 = INTEG16(data[index ++],data[index ++]);
+    temp32 = INTEG16(data[index+0],data[index+1]);
+    index += 2;
     payout.payout_amount = EV_amountFromVM(temp32);
-
     temp32 = INTEG16(data[index + 0],data[index + 1]);
     index += 2;
     payout.reamin_amount = EV_amountFromVM(temp32);
     st_vm.remainAmount = EV_amountFromVM(temp32);
-
-    temp = data[index++];
-
-    if(EV_get_pc_cmd() == EV_PAYOUT_REQ ||
-        (EV_get_pc_cmd() == EV_CONTROL_REQ && EV_getSubcmd() == 6))
-    {
-        EV_set_pc_cmd(EV_NA);
-        EV_callbackhandle(EV_PAYOUT_RPT,&payout);
-    }
-	
+    temp32 = data[index++];
+    EV_callbackhandle(EV_PAYOUT_RPT,&payout);
 }
 
 /*********************************************************************************************************
@@ -844,25 +850,25 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 	switch(type)
 	{
 		case EV_NAK_VM:
-			if(EV_get_pc_cmd() != EV_NA)//有命令被拒绝
+            if(EV_getPCcmd() != EV_NA)//有命令被拒绝
 			{
-				EV_set_pc_cmd(EV_NA);
+                EV_setPCcmd(EV_NA);
 				EV_LOGFLOW("EV_NA\n");
-                st_vm.pcReq.type = EV_get_pc_cmd();;
+                st_vm.pcReq.type = EV_getPCcmd();;
                 st_vm.pcReq.err = PC_CMD_NAK;
                 EV_callbackhandle(EV_REQUEST_FAIL,&st_vm.pcReq);
 			}
 			break;
 		case EV_TIMEOUT:
-			EV_LOGFLOW("EV_TIMEOUT...cmd=%x\n",EV_get_pc_cmd());
-            st_vm.pcReq.type = EV_get_pc_cmd();;
+            EV_LOGFLOW("EV_TIMEOUT...cmd=%x\n",EV_getPCcmd());
+            st_vm.pcReq.type = EV_getPCcmd();;
             st_vm.pcReq.err = PC_CMD_TIMEOUT;
             EV_callbackhandle(EV_REQUEST_FAIL,&st_vm.pcReq);
 			break;
         case EV_SETUP_REQ:	//	1 初始化 GET_SETUP PC发送初始化命令
         	if(EV_getVmState() == EV_STATE_DISCONNECT)
         	{
-        		EV_set_pc_cmd(EV_NA);
+                EV_setPCcmd(EV_NA);
                 EV_setVmState(EV_STATE_INITTING);
                 EV_callbackhandle(EV_INITING,NULL);
                 EV_LOGFLOW("EV_connected,Start to init....\n");	
@@ -875,7 +881,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
             EV_setup_rpt(&st_vm.setup,recvbuf);//vmc_setup包解析
 			EV_LOGFLOW("EV_SETUP_RPT\n");
             EV_callbackhandle(EV_SETUP_RPT,&st_vm.setup);
-			EV_set_pc_cmd(EV_NA);
+            EV_setPCcmd(EV_NA);
 			if(EV_getVmState() != EV_STATE_INITTING) //判断是否在初始化
 			{
 				break;
@@ -886,13 +892,13 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			EV_callbackhandle(EV_CONTROL_REQ,recvbuf);
 			buf[0] = 19;
 			buf[1] = 0x00;
-			EV_setSubcmd(19);
+            EV_setPCSubcmd(19);
 			EV_pcReqSend(CONTROL_IND,1,buf,2);
 			break;
 		case EV_CONTROL_RPT:
-			if(EV_get_pc_cmd() == EV_CONTROL_REQ)
-				EV_set_pc_cmd(EV_NA);
-			if(EV_getSubcmd() == 19)//初始化完成标志 
+            if(EV_getPCcmd() == EV_CONTROL_REQ)
+                EV_setPCcmd(EV_NA);
+            if(EV_getPCSubcmd() == 19)//初始化完成标志
 			{
 				if(EV_getVmState() != EV_STATE_INITTING)//是自动初始化跳过直接下一步
 				{
@@ -908,8 +914,8 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 			break;
 		case EV_STATE_RPT://状态返回
 			EV_LOGFLOW("EV_STATE_RPT\n");
-			if(EV_get_pc_cmd() == EV_STATE_REQ)
-				EV_set_pc_cmd(EV_NA);
+            if(EV_getPCcmd() == EV_STATE_REQ)
+                EV_setPCcmd(EV_NA);
             temp = EV_state_rpt(&st_vm.state,recvbuf);
             EV_callbackhandle(EV_STATE_RPT,&st_vm.state);
             if(temp == 1)
@@ -932,7 +938,7 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
                 EV_LOGFLOW("VMC is restarted......\n");
                 EV_callbackhandle(EV_RESTART,NULL);
 				EV_setVmState(EV_STATE_INITTING);
-				EV_set_pc_cmd(EV_NA);
+                EV_setPCcmd(EV_NA);
 				EV_pcReqSend(GET_SETUP,0,NULL,0);
 			}
 			else if(data[MT + 1] == 5)
@@ -941,9 +947,9 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 				{
 					if(EV_getVmState() != EV_STATE_MANTAIN)
 					{
-						EV_set_pc_cmd(EV_NA);
-						EV_setVmState(EV_STATE_MANTAIN);
-						EV_LOGFLOW("EV_ENTER_MANTAIN\n");	
+                        EV_LOGFLOW("EV_ENTER_MANTAIN\n");
+                        EV_setPCcmd(EV_NA);
+						EV_setVmState(EV_STATE_MANTAIN);	
 						EV_callbackhandle(EV_ENTER_MANTAIN,recvbuf);
 					}
 				}
@@ -954,8 +960,14 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 				EV_callbackhandle(EV_ACTION_RPT,recvbuf);
 			}
 			break;
-		case EV_POLL:
-			if(EV_getVmState() == EV_STATE_MANTAIN)//表示退出维护模式
+        case EV_POLL:
+            EV_LOGD("EV_POLL %d\n",EV_getVmState());
+            if(EV_getVmState() == EV_STATE_DISCONNECT)//如果断线了则自动进入初始化流程
+            {
+                EV_vmMainFlow(EV_SETUP_REQ,NULL,0);
+
+            }
+            else if(EV_getVmState() == EV_STATE_MANTAIN)//表示退出维护模式
 			{
 				EV_setVmState(EV_STATE_INITTING);
 				EV_LOGFLOW("EV_EXIT_MANTAIN\n");	
@@ -963,16 +975,15 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 				EV_pcReqSend(GET_SETUP,0,NULL,0);
 			}
 			break;
-		case EV_ENTER_MANTAIN:
-			
+		case EV_ENTER_MANTAIN:			
 			break;
 		case EV_EXIT_MANTAIN:
 			break;
 		
 		case EV_TRADE_RPT: //出货报告返回
-			if(EV_get_pc_cmd() == EV_TRADE_REQ)
+            if(EV_getPCcmd() == EV_TRADE_REQ)
 			{
-				EV_set_pc_cmd(EV_NA);			
+                EV_setPCcmd(EV_NA);
 				EV_LOGFLOW("EV_TRADE_RPT\n");
                 EV_trade_rpt(&st_vm.trade,recvbuf);
                 EV_callbackhandle(EV_TRADE_RPT,&st_vm.trade);
@@ -988,6 +999,12 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		case EV_PAYOUT_RPT:
             EV_LOGFLOW("EV_PAYOUT_RPT\n");
             EV_payout_rpt(recvbuf);
+            if(EV_getPCcmd() == EV_PAYOUT_REQ ||
+                (EV_getPCcmd() == EV_CONTROL_REQ && EV_getPCSubcmd() == 6))
+            {
+                EV_setPCcmd(EV_NA);
+
+            }
 			break;
 		
 		case EV_BUTTON_RPT://按键上报
@@ -1016,9 +1033,9 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 		
         case EV_COLUMN_RPT:
             EV_LOGFLOW("EV_COLUMN_RPT\n");
-            if(EV_get_pc_cmd() == EV_COLUMN_REQ)
-                EV_set_pc_cmd(EV_NA);
             EV_column_rpt(recvbuf);
+            if(EV_getPCcmd() == EV_COLUMN_REQ)
+                EV_setPCcmd(EV_NA);
 
             break;
 		default:
@@ -1040,20 +1057,12 @@ int EV_vmMainFlow(const uint8 type,const uint8 *data,const uint8 len)
 *********************************************************************************************************/
 int	EV_vmRpt(const uint8 type,const uint8 *data,const uint8 len)
 {
-    uint8 ev_type = type;
-	if(type == EV_POLL)
+    uint8 ev_type = type;	
+    if(type == EV_ACK_VM) //回应ACK
 	{
-		if(EV_getVmState() == EV_STATE_DISCONNECT)//如果断线了则自动进入初始化流程
-		{
-			EV_vmMainFlow(EV_SETUP_REQ,NULL,0);
-			return 1;
-		}
-	}
-	else if(type == EV_ACK_VM)
-	{
-		if(EV_get_pc_cmd() == EV_CONTROL_REQ)
+        if(EV_getPCcmd() == EV_CONTROL_REQ)
 		{	
-            if(EV_getSubcmd() != 6)//不是找零
+            if(EV_getPCSubcmd() != 6)//不是找零
             {
 				ev_type = EV_CONTROL_RPT;
 				EV_vmMainFlow(ev_type,data,len);
@@ -1110,7 +1119,7 @@ int EV_pcPayback()
     buf[ix++] = 6;//找零指令
     buf[ix++] = 0;
     buf[ix++] = 0;
-    EV_setSubcmd(6);
+    EV_setPCSubcmd(6);
     return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
@@ -1121,7 +1130,7 @@ int32 EV_cash_control(uint8 flag)
     uint8 buf[20],ix = 0;
     buf[ix++] = 2;
     buf[ix++] = (flag == 0) ? 0 : 1;
-    EV_setSubcmd(2);
+    EV_setPCSubcmd(2);
     return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
@@ -1133,7 +1142,7 @@ int32 EV_cabinet_control(uint8 cabinet,uint8 dev,uint8 flag)
     buf[ix++] = cabinet;
     buf[ix++] = dev;
     buf[ix++] = (flag == 0) ? 0 : 1;
-    EV_setSubcmd(3);
+    EV_setPCSubcmd(3);
     return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
@@ -1150,7 +1159,7 @@ int32 EV_set_date(ST_DATE *date)
     buf[ix++] = date->sec;
     buf[ix++] = date->week;
 
-    EV_setSubcmd(17);
+    EV_setPCSubcmd(17);
     return EV_pcRequest(EV_CONTROL_REQ,1,buf,ix);
 }
 
@@ -1201,26 +1210,25 @@ int EV_closeSerialPort()
 
 int EV_register(EV_callBack callBack)
 {
-    int ret,serialId;
 	if(callBack == NULL)
 	{
 		EV_LOGW("The callback is NULL.....\n");
 	}
 	EV_callBack_fun = callBack;
     timerId_vmc = EV_timer_register(EV_heart_ISR);
-    if(ret < 0)
+    if(timerId_vmc < 0)
 	{
         EV_LOGE("Timer[timerId_vmc] register failed.....\n");
 		return -1;
 	}
     timerId_pc = EV_timer_register(EV_pcTimer_ISR);
-    if(ret < 0)
+    if(timerId_pc < 0)
 	{
         EV_LOGE("Timer[timerId_pc] register failed.....\n");
 		return -1;
 	}	
 	EV_setVmState(EV_STATE_DISCONNECT);
-    EV_set_pc_cmd(EV_NA);
+    EV_setPCcmd(EV_NA);
     st_vm.setup.vmRatio = 10;
     EV_LOGI("EV_register OK.....\n");
 

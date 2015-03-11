@@ -136,14 +136,6 @@ static json_t *JNI_column_rpt(const void *ptr)
 
     }
 
-    //清理链表
-    while(p->next != NULL)
-    {
-        q = p->next;
-        free(p);
-        p = q;
-    }
-
     label = json_new_string("column");
     json_insert_child(label,arr);
     json_insert_child(entry,label);
