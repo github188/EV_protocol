@@ -12,6 +12,16 @@ uint8 yserial_fdIsNull(const Y_FD fd)
 #endif
 }
 
+void yserial_close(Y_FD fd)
+{
+#ifdef EV_WIN32
+    winserial_close(fd);
+#else  //linux待完善
+    unixserial_close(fd);
+#endif
+}
+
+
 Y_FD yserial_open(char *portName)
 {
     Y_FD fd;
@@ -37,14 +47,7 @@ Y_FD yserial_open(char *portName)
 #endif
 }
 
-void yserial_close(Y_FD fd)
-{
-#ifdef EV_WIN32
-    winserial_close(fd);
-#else  //linux待完善
-    unixserial_close(fd);
-#endif
-}
+
 
 uint32 yserial_read (Y_FD fd,char *pData,uint32 len)
 {

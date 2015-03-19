@@ -14,9 +14,10 @@ static Y_FD bento_fd;
 
 int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int stopbits)
 {
+    EV_createLog();
     Y_FD fd = yserial_open(portName);
     if (yserial_fdIsNull(fd)){
-            EV_LOGE("EV_openSerialPort:open %s failed\n",portName);
+            EV_LOGE("EV_bento_openSerial:open %s failed\n",portName);
 			return -1;
 	}
     yserial_setParity(fd,parity);
@@ -26,13 +27,13 @@ int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int sto
     yserial_setTimeout(fd,10);
     yserial_clear(fd);
 	bento_fd = fd;
-    EV_LOGI("EV_openSerialPort:Serial[%s] open suc\n",portName);
+    EV_LOGI("EV_bento_openSerial:Serial[%s] open suc\n",portName);
     return 1;
 }
 
 int EV_bento_closeSerial()
 {
-    EV_LOGI("EV_closeSerialPort:closed...\n");
+    EV_LOGI("EV_bento_closeSerial:closed...\n");
     yserial_close(bento_fd);
 
     return 1;
@@ -41,41 +42,39 @@ int EV_bento_closeSerial()
 
 uint8 EV_bento_recv(uint8 *rdata,uint8 *rlen)
 {
-    uint8 timeout = 100,buf[10]= {0},len = 0,temp,startFlag = 0;
+    uint8 timeout = 100,buf[80]= {0},index = 0,len = 0,temp;
     uint16 crc;
 	*rlen = 0;
-	while(timeout--)
+    if(rdata == NULL)
+        return 0;
+    while(timeout)
 	{
-        if(yserial_read(bento_fd,(char *)&temp,1) > 0)
+        if(yserial_read(bento_fd,(char *)&temp,1) > 0)//有数据接收
 		{
-			if(temp == EV_BENTO_HEAD + 1)
-			{
-				startFlag = 1;
-				
-			}
-			if(startFlag == 1)
-			{
-				buf[len++] = temp;
-				if(len >= (buf[1] + 2))
-				{
-					crc = EV_crcCheck(buf,6);
-					if(crc == INTEG16(buf[6],buf[7]))
-					{
-						if(rdata != NULL)
-							memcpy(rdata,buf,8);
-						*rlen = 8;
-						return 1;
-					}
-					else
-						return 0;
-					
-				}
-			}
-			else
-				EV_msleep(2);
+            buf[index++] = temp;
+            if(index == 1){
+                if(temp != EV_BENTO_HEAD + 1)
+                    index = 0;
+            }
+            else if(index == 2){
+                len = temp;
+            }
+            else if(index >= (len + 2)){
+                crc = EV_crcCheck(buf,len);
+                if(crc == INTEG16(buf[len],buf[len + 1]))
+                {
+                     memcpy(rdata,buf,len + 2);
+                    *rlen = len + 2;
+                     return 1;
+                }
+                else
+                    return 0;
+            }
 		}
-		else
-			EV_msleep(2);
+        else{
+            EV_msleep(5);
+            timeout--;
+        }
 	}
 	return 0;
 	
@@ -84,7 +83,7 @@ uint8 EV_bento_recv(uint8 *rdata,uint8 *rlen)
 
 int EV_bento_send(uint8 cmd,uint8 cabinet,uint8 arg,uint8 *data)
 {
-    uint8 buf[20] = {0},len = 0,ret,rbuf[20] = {0};
+    uint8 buf[20] = {0},len = 0,ret,rbuf[80] = {0};
     uint16 crc;
 	buf[len++] = EV_BENTO_HEAD;
 	buf[len++] = 0x07;
@@ -134,12 +133,13 @@ int EV_bento_send(uint8 cmd,uint8 cabinet,uint8 arg,uint8 *data)
 
 int EV_bento_open(int cabinet,int box)
 {
-	int ret = 0;
+    int ret;
 	if(cabinet <= 0 || box <= 0)
-		return 0;
-	
-	ret = EV_bento_send(EV_BENTO_TYPE_OPEN,cabinet&0xFF,box &0xFF,NULL);
-	return ret;
+		return 0;	
+    ret = EV_bento_send(EV_BENTO_TYPE_OPEN,cabinet&0xFF,box &0xFF,NULL);
+
+    EV_LOGD("EV_bento_open: cabinet = %d,box = %d ret = %d",cabinet,box,ret);
+    return ret;
 }
 
 
@@ -148,18 +148,26 @@ int EV_bento_light(int cabinet,uint8 flag)
 	int ret = 0;
 	if(cabinet <= 0)
 		return 0;
-	ret = EV_bento_send(EV_BENTO_TYPE_LIGHT,cabinet&0xFF,flag &0xFF,NULL);
+    ret = EV_bento_send(EV_BENTO_TYPE_LIGHT,cabinet,flag,NULL);
+    EV_LOGD("EV_bento_light: cabinet=%d flag=%d ret =%d\n",cabinet,flag,ret);
 	return ret;
 }
 
 
-int EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
+int  EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
 {
 	int ret = 0;
     uint8 buf[20] = {0},i;
-	if(st_bento == NULL) return 0;
-	if(cabinet <= 0)
-		return 0;
+    if(st_bento == NULL) {
+        EV_LOGW("EV_bento_check:st_bento == null\n");
+        return 0;
+    }
+
+    if(cabinet <= 0){
+        EV_LOGW("EV_bento_check:cabinet = %d\n",cabinet);
+        return 0;
+
+    }
 
 	ret = EV_bento_send(EV_BENTO_TYPE_CHECK,cabinet&0xFF,0x00,buf);
 	if(ret == 1)
@@ -172,10 +180,13 @@ int EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
 		{
 			st_bento->id[i] = buf[9 + i];
 		}
+        EV_LOGD("EV_bento_check:num=%d islight=%d id=%s\n",st_bento->boxNum,
+                st_bento->islight,st_bento->id);
 		return 1;
 		
 	}
-	return ret;
+    EV_LOGD("EV_bento_check: cabinet = %d Fail!!!\n",cabinet);
+    return 0;
 }
 
 

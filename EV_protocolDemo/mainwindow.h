@@ -5,7 +5,7 @@
 
 #include <QLibrary>
 #include "EVprotocol.h"
-
+#include <QHash>
 namespace Ui {
 class MainWindow;
 }
@@ -36,6 +36,18 @@ private slots:
     void EV_callBackSlot(const quint8 type,const void *ptr);
     void on_pushButton_payout_clicked();
 
+    void on_pushButton_cycleTrade_clicked(bool checked);
+    void textChangedSlot();
+    void on_pushButton_trade_2_clicked();
+
+    void on_pushButton_bentoPort_clicked(bool checked);
+
+    void on_pushButton_bentoCheck_clicked();
+
+    void on_radioButton_bentoLightOn_clicked(bool checked);
+
+    void on_radioButton_bentoLightOff_clicked(bool checked);
+
 private:
     Ui::MainWindow *ui;
     QLibrary lib;
@@ -44,8 +56,9 @@ private:
     static void  __stdcall EV_callBack(int type,const void *ptr);
 
 
-
-
+    bool isAllColumnTest;
+    QHash<int,quint32> tradeHash;
+    quint32 tradeNum;
 
 };
 

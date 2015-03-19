@@ -5,8 +5,7 @@
 #include<assert.h>
 #include<pthread.h>
 #include "EV_com.h"
-#include "json.h"
-#include "ev_bento.h"
+#include "EV_bento.h"
 #include "ev_config.h"
 #include "timer.h"
 #include "EVprotocol.h"
@@ -154,49 +153,9 @@ int EV_API EV_bentoLight(int cabinet, int flag)
 }
 
 
-int EV_API EV_bentoCheck(int cabinet,char *msg)
+int EV_API EV_bentoCheck(int cabinet,ST_BENTO_FEATURE *info)
 {
-#if 0
-    json_t *root = NULL, *entry = NULL, *label;
-    char *text,id[10] = {0},i;
-
-    ST_BENTO_FEATURE st_bento;
-
-    env = env; obj = obj;
-    EV_LOGI5("EV_bento_check:start\n");
-    ret = EV_bento_check(cabinet, &st_bento);
-
-    if(ret == 1)
-    {
-            root = json_new_object();
-            entry = json_new_object();
-            JNI_json_insert_str(entry,JSON_TYPE,"EV_BENTO_FEATURE");
-            JNI_json_insert_int(entry,"boxNum",st_bento.boxNum);
-            JNI_json_insert_int(entry,"HotSupport",st_bento.ishot);
-            JNI_json_insert_int(entry,"CoolSupport",st_bento.iscool);
-            JNI_json_insert_int(entry,"LightSupport",st_bento.islight);
-
-            for(i = 0;i < 7;i++)
-            {
-                sprintf(&id[i * 2],"%02x",st_bento.id[i]);
-            }
-
-            JNI_json_insert_str(entry,"ID",id);
-            label = json_new_string(JSON_HEAD);
-            json_insert_child(label,entry);
-            json_insert_child(root,label);
-            json_tree_to_string(root, &text);
-            //memcpy(bentdata,text,sizeof());
-            //free(text);
-
-
-            str = (*g_env)->NewStringUTF(g_env,text);
-            json_free_value(&root);
-            return str;
-    }
-    str = (*g_env)->NewStringUTF(g_env,"");
-    return str;
-#endif
+    return EV_bento_check(cabinet,info);
 }
 
 

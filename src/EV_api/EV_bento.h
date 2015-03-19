@@ -1,6 +1,8 @@
 #ifndef _EV_BENTO_H_
 #define _EV_BENTO_H_
 #include "ev_config.h"
+#include "EVprotocol.h"
+
 
 #define EV_BENTO_HEAD   0xC7
 
@@ -18,17 +20,6 @@
 #define EV_BENTO_TYPE_LIGHT_ACK			0x66
 #define EV_BENTO_TYPE_HOT_ACK 			0x63
 #define EV_BENTO_TYPE_COOL_ACK 			0x65
-
-
-
-typedef struct _st_bento_feature_{
-
-    uint8 ishot;
-    uint8 islight;
-    uint8 iscool;
-    uint16 boxNum;
-    uint8 id[10];
-}ST_BENTO_FEATURE;
 
 
 int EV_bento_open(int cabinet,int box);

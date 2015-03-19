@@ -185,6 +185,18 @@ typedef struct _st_column_rpt_{
 }ST_COLUMN_RPT;
 
 
+
+
+typedef struct _st_bento_feature_{
+
+    uint8 ishot;
+    uint8 islight;
+    uint8 iscool;
+    uint16 boxNum;
+    uint8 id[10];
+}ST_BENTO_FEATURE;
+
+
 //VMC当前状态
 #define EV_STATE_DISCONNECT		0    //断开连接
 #define EV_STATE_INITTING		1    //正在初始化
@@ -234,7 +246,7 @@ EV_EXPORT int   EV_API  EV_bentoRegister(char *portName);
 EV_EXPORT int   EV_API  EV_bentoOpen(int cabinet, int box);
 EV_EXPORT int   EV_API  EV_bentoRelease();
 EV_EXPORT int   EV_API  EV_bentoLight(int cabinet, int flag);
-EV_EXPORT int   EV_API  EV_bentoCheck(int cabinet,char *msg);
+EV_EXPORT int   EV_API  EV_bentoCheck(int cabinet,ST_BENTO_FEATURE *info);
 EV_EXPORT int   EV_API  EV_cashControl(int flag);
 EV_EXPORT int   EV_API  EV_cabinetControl(int cabinet, int dev, int flag);
 EV_EXPORT int   EV_API  EV_setDate(const void *date);

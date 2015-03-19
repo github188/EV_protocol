@@ -550,7 +550,7 @@ uint32	EV_pcReqSend(uint8 type,uint8 ackBack,uint8 *data,uint8 len)
     EV_setPCcmd(type);
     EV_LOGTASK("EV_pcReqSend:MT =%x\n",type);
 	if(type == VENDOUT_IND)//出货命令 超时1分钟30秒
-        EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
+        EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG + 240);//出货超时6分钟
     else if(type == CONTROL_IND && sendbuf[MT + 1] == 6)//找零
         EV_timer_start(timerId_pc,EV_TIMEROUT_PC_LONG);
     else if(type == PAYOUT_IND)//找零

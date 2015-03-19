@@ -24,17 +24,24 @@ MainWindow::MainWindow(QWidget *parent) :
 #else
     ui->lineEdit_port->setText("ttyS0");
 #endif
+    ui->textEdit->setReadOnly(true);
 
-
+    QFont font = this->font();
+    font.setPointSize(14);
+    ui->textEdit->setFont(font);
+    connect(ui->textEdit,SIGNAL(textChanged()),
+            this,SLOT(textChangedSlot()));
     connect(this,SIGNAL(EV_callBackSignal(quint8,const void*)),
             this,SLOT(EV_callBackSlot(quint8,const void*)),Qt::QueuedConnection);
-
+    isAllColumnTest = false;
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+
 
 
 void MainWindow::EV_callBackSlot(const quint8 type,const void *ptr)
@@ -111,9 +118,27 @@ void MainWindow::EV_callBackSlot(const quint8 type,const void *ptr)
         str += ("EV_TRADE_RPT:");
         str += QString("cabinet:%1,column:%2 rst= %3 amount:%4\n").arg(trade->cabinet)
                 .arg(trade->column).arg(trade->result).arg(trade->remainAmount);
+        int res = trade->result;
+
+        if(tradeHash.contains(res)){
+             quint32 temp = tradeHash.value(res);
+             temp++;
+             tradeHash[res] = temp;
+        }
+        else{
+            tradeHash[res] = 1;
+        }
+        str += QString("出货%1次\n").arg(++tradeNum);
+        QHash<int, quint32>::const_iterator i;
+        for(i = tradeHash.constBegin();i != tradeHash.constEnd();i++){
+            str += QString("[%1]:%2\n").arg(i.key()).arg(i.value());
+        }
+
 
         ui->label_remainAmount->setText(QString("%1").arg(trade->remainAmount));
-
+        if(isAllColumnTest){
+            on_pushButton_trade_clicked();
+        }
 
     }
     else if(type == EV_PAYIN_RPT)
@@ -124,6 +149,7 @@ void MainWindow::EV_callBackSlot(const quint8 type,const void *ptr)
         str += ("EV_PAYIN_RPT:");
         str += QString("type:%1,amount:%2 remain: %3\n").arg(payin->payin_type)
                 .arg(payin->payin_amount).arg(payin->reamin_amount);
+
 
     }
     else if(type == EV_PAYOUT_RPT)
@@ -161,6 +187,15 @@ void  __stdcall MainWindow::EV_callBack(int type, const void *ptr)
     }
 
 
+}
+
+
+
+
+
+void MainWindow::textChangedSlot()
+{
+    ui->textEdit->moveCursor(QTextCursor::End);
 }
 
 void MainWindow::on_pushButton_start_clicked()
@@ -216,4 +251,115 @@ void MainWindow::on_pushButton_payout_clicked()
     {
         payout(100);
     }
+}
+
+void MainWindow::on_pushButton_cycleTrade_clicked(bool checked)
+{
+    if(checked){
+        ui->pushButton_cycleTrade->setText("停止检测");
+        on_pushButton_trade_clicked();
+        isAllColumnTest = true;
+        tradeHash.clear();
+        tradeNum = 0;
+    }
+    else{
+        ui->pushButton_cycleTrade->setText("循环出货");
+        isAllColumnTest = false;
+    }
+}
+
+void MainWindow::on_pushButton_trade_2_clicked()
+{
+    typedef int (*EV_bentoOpen)(int cabinet, int box);
+    EV_bentoOpen bentoOpen = (EV_bentoOpen)lib.resolve("EV_bentoOpen");
+    if(bentoOpen)
+    {
+        bool ok;
+        quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
+        quint8 box = ui->lineEdit_trade_column_2->text().toInt(&ok);
+        bentoOpen(cabinet,box);
+    }
+
+}
+
+void MainWindow::on_pushButton_bentoPort_clicked(bool checked)
+{
+    if(checked){
+        typedef int (*EV_bentoRegister)(char *);
+
+        EV_bentoRegister bentoRegister = (EV_bentoRegister)lib.resolve("EV_bentoRegister");
+        if(bentoRegister)
+        {
+            QByteArray portArr = ui->lineEdit_port_2->text().toUtf8();
+            int ret = bentoRegister(portArr.data());
+            if(ret == -1)
+            {
+                ui->pushButton_bentoPort->setChecked(false);
+                QMessageBox::warning(this,tr("COM"),tr("Open serialport fail!"),QMessageBox::Yes);
+            }
+            ui->pushButton_bentoPort->setText(tr("关闭串口"));
+            return;
+        }
+        ui->pushButton_bentoPort->setChecked(false);
+        QMessageBox::warning(this,tr("COM"),tr("Load dll failed!"),QMessageBox::Yes);
+    }
+    else{
+        typedef int (*EV_bentoRelease)(void);
+        EV_bentoRelease bentoRelease = (EV_bentoRelease)lib.resolve("EV_bentoRelease");
+        if(bentoRelease){
+            bentoRelease();
+        }
+        ui->pushButton_bentoPort->setText(tr("打开串口"));
+    }
+}
+
+void MainWindow::on_pushButton_bentoCheck_clicked()
+{
+    typedef int (*EV_bentoCheck)(int,ST_BENTO_FEATURE *);
+    EV_bentoCheck bentoCheck = (EV_bentoCheck)lib.resolve("EV_bentoCheck");
+    if(bentoCheck){
+        bool ok;
+        quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
+        ST_BENTO_FEATURE st_bento;
+        int ret = bentoCheck(cabinet,&st_bento);
+
+        if(ret == 1){
+            ui->lineEdit_bentoBoxNum->setText(QString("%1").arg(st_bento.boxNum));
+        }
+
+        qDebug()<<"EV_bentoCheck:"<<st_bento.boxNum<<st_bento.id;
+
+    }
+
+}
+
+void MainWindow::on_radioButton_bentoLightOn_clicked(bool checked)
+{
+
+    typedef int (*EV_bentoLight)(int cabinet, int flag);
+    EV_bentoLight bentoLight = (EV_bentoLight)lib.resolve("EV_bentoLight");
+    if(bentoLight == NULL) return;
+    bool ok;
+    quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
+
+    qDebug()<<"BentoLight:"<<checked;
+    if(checked){
+        bentoLight(cabinet,1);
+    }
+    else{
+        bentoLight(cabinet,0);
+    }
+}
+
+void MainWindow::on_radioButton_bentoLightOff_clicked(bool checked)
+{
+    typedef int (*EV_bentoLight)(int cabinet, int flag);
+    EV_bentoLight bentoLight = (EV_bentoLight)lib.resolve("EV_bentoLight");
+    if(bentoLight == NULL) return;
+    bool ok;
+    quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
+    if(checked){
+        bentoLight(cabinet,0);
+    }
+
 }

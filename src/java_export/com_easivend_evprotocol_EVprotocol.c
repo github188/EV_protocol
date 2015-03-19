@@ -725,9 +725,7 @@ Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 	jint ret;
     json_t *root = NULL, *entry = NULL, *label;
     char *text,id[10] = {0},i;
-
 	ST_BENTO_FEATURE st_bento;
-
     env = env; obj = obj;
     EV_LOGI("EV_bento_check:start\n");
 	ret = EV_bento_check(cabinet, &st_bento);
@@ -741,7 +739,6 @@ Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 			JNI_json_insert_int(entry,"HotSupport",st_bento.ishot);
 			JNI_json_insert_int(entry,"CoolSupport",st_bento.iscool);
 			JNI_json_insert_int(entry,"LightSupport",st_bento.islight);
-
 			for(i = 0;i < 7;i++)
 			{
                 sprintf(&id[i * 2],"%02x",st_bento.id[i]);
@@ -752,11 +749,9 @@ Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 			json_insert_child(label,entry);
 			json_insert_child(root,label);
 			json_tree_to_string(root, &text);
-			//memcpy(bentdata,text,sizeof());
-			//free(text);
-			
 
 			str = (*g_env)->NewStringUTF(g_env,text);
+            free(text);
 			json_free_value(&root);
 			return str;
 	}
