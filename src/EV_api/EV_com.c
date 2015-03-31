@@ -579,7 +579,7 @@ void EV_task()
     }
     EV_msleep(50);
 
-    //EV_LOGD("EV_task....");
+    EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
     {
         timer_vmc_timeout = 0;

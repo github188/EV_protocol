@@ -1,5 +1,5 @@
 #include "yoc_serialport.h"
-
+#include "ev_config.h"
 
 
 
@@ -18,6 +18,7 @@ void yserial_close(Y_FD fd)
     winserial_close(fd);
 #else  //linux待完善
     unixserial_close(fd);
+    EV_LOGD("yserial_close:fd = %d\n",fd);
 #endif
 }
 
@@ -34,8 +35,10 @@ Y_FD yserial_open(char *portName)
     winserial_setParity(fd,PAR_NONE);
     winserial_setFlowControl(fd,FLOW_OFF);
     winserial_setTimeout(fd,10);
+
     return fd;
 #else
+    EV_LOGD("yserial_open:[%s]\n",portName);
     fd = unixserial_open(portName);
     unixserial_setBaudRate(fd,BAUD9600);
     unixserial_setDataBits(fd,DATA_8);
@@ -43,6 +46,7 @@ Y_FD yserial_open(char *portName)
     unixserial_setParity(fd,PAR_NONE);
     unixserial_setFlowControl(fd,FLOW_OFF);
     unixserial_setTimeout(fd,10);
+    EV_LOGD("yserial_open:fd = %d\n",fd);
     return fd;
 #endif
 }

@@ -12,6 +12,22 @@
 
 static Y_FD bento_fd;
 
+
+static int EV_getCh(char *ch)
+{
+    uint8 i = 0;
+#ifdef EV_WIN32
+    i = yserial_read(bento_fd,ch,1);
+#else
+    if(yserial_bytesAvailable(bento_fd) > 0)
+    {
+        i = yserial_read(bento_fd,ch,1);
+    }
+#endif
+     return i;
+}
+
+
 int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int stopbits)
 {
     EV_createLog();
@@ -48,8 +64,8 @@ uint8 EV_bento_recv(uint8 *rdata,uint8 *rlen)
     if(rdata == NULL)
         return 0;
     while(timeout)
-	{
-        if(yserial_read(bento_fd,(char *)&temp,1) > 0)//有数据接收
+	{ 
+        if(EV_getCh((char *)&temp) > 0)//有数据接收
 		{
             buf[index++] = temp;
             if(index == 1){

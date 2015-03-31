@@ -21,6 +21,8 @@ static pthread_t pid;
 static volatile int g_threadStop = 0;
 static jmethodID methodID_EV_callBack = NULL;
 
+static unsigned char vmcOpened = 0,bentoOpened = 0;
+
 #define JSON_HEAD		"EV_json"
 #define JSON_TYPE		"EV_type"
 
@@ -433,7 +435,7 @@ void *JNI_run(void* arg)
 
     }
 
-    EV_LOGI("EV_thread ready to run...\n");
+    EV_LOGI("EV_thread ready to run...threadStoped=%d\n",g_threadStop);
 	while(!g_threadStop)
 	{
        EV_task();
@@ -488,7 +490,9 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
         g_threadStop = 1;
         pthread_join(pid,&ret);
     }
-    EV_closeSerialPort();
+    if(vmcOpened)
+        EV_closeSerialPort();
+    vmcOpened = 0;
     portName = (*env)->GetStringUTFChars(env,jport, NULL);
     int fd = EV_openSerialPort((char *)portName,9600,8,'N',1);
     (*env)->ReleaseStringUTFChars(env,jport,portName);
@@ -496,17 +500,19 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStart
             EV_LOGE("Can't Open Serial Port:%s!\n",portName);
             return -1;
     }
+
+    vmcOpened = 1;
     //串口打开成功  开启线程
     (*env)->GetJavaVM(env, &g_jvm);// 保存全局JVM以便在子线程中使用
     g_obj = (*env)->NewGlobalRef(env, obj);// 不能直接赋值(g_obj = ojb)
-    EV_LOGD("obj=%x &obj=%x g_obj=%x\n",obj,&obj,g_obj);
+
     jclass cls = (*env)->FindClass(env,"com/easivend/evprotocol/EVprotocol");
     if(cls == NULL)
     {
         EV_LOGW("FindClass\"com/easivend/evprotocol/EVprotocol!\" Failed\n");
     }
     g_cls = (*env)->NewGlobalRef(env, cls);
-    EV_LOGD("cls=%x &cls=%x g_cls=%x",cls,&cls,g_cls);
+
     g_threadStop = 0;
     pthread_create(&pid, NULL, JNI_run, NULL);
 
@@ -526,6 +532,7 @@ Java_com_easivend_evprotocol_EVprotocol_vmcStop
 {
     EV_LOGI("Java_com_easivend_evprotocol_EVprotocol_vmcStop....");
 	g_threadStop = 1;
+    vmcOpened = 0;
 }
 
 /*
@@ -672,13 +679,16 @@ JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRegister
 {
 	const char *portName = (*env)->GetStringUTFChars(env,jport, NULL);
     env = env; obj = obj;
-    EV_bento_closeSerial();
+    if(bentoOpened)
+        EV_bento_closeSerial();
+    bentoOpened = 0;
 	int fd = EV_bento_openSerial((char *)portName,9600,8,'N',1);
 	(*env)->ReleaseStringUTFChars(env,jport,portName);
     if (fd < 0){
             EV_LOGE("Can't Open Serial Port:%s!\n",portName);
 			return -1;
 	}
+    bentoOpened = 1;
 	return 1;
 }
 
@@ -700,6 +710,7 @@ JNIEXPORT jint JNICALL Java_com_easivend_evprotocol_EVprotocol_bentoRelease
 	jint ret = 1;
     env = env; obj = obj;
     EV_bento_closeSerial();
+    bentoOpened = 0;
 	return ret;
 }
 
