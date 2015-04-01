@@ -106,15 +106,17 @@ json_t *JNI_payout_rpt(const void *ptr)
 static json_t *JNI_column_rpt(const void *ptr)
 {
     ST_COLUMN_RPT *column;
-    struct ST_COLUMN *p,*q;
+    ST_COLUMN *col;
     json_t *root,*entry,*label,*arr;
+    char ID[100] = {0};
+
+    unsigned int i,id_len = 0;
     if(ptr == NULL)
     {
         EV_LOGE("JNI_column_rpt:ptr = NULL!!!\n");
         return NULL;
     }
     column = (ST_COLUMN_RPT *)ptr;
-    p = (struct ST_COLUMN *)&column->head;
 
     root = json_new_object();
     entry = json_new_object();
@@ -126,15 +128,25 @@ static json_t *JNI_column_rpt(const void *ptr)
     JNI_json_insert_int(entry,"type",column->type);
     JNI_json_insert_int(entry,"sum",column->sum);
 
-    //遍历链表
-    while(p->next != NULL)
+    id_len = column->id_len % 20;
+
+    for(i = 0;i < id_len ;i++){
+        sprintf(&ID[i*2],"%02x",column->id[i]);
+    }
+    JNI_json_insert_str(entry,"ID",ID);
+
+    JNI_json_insert_int(entry,"cool",column->iscool);
+    JNI_json_insert_int(entry,"hot",column->ishot);
+    JNI_json_insert_int(entry,"light",column->islight);
+
+    //遍历货道
+    for(i = 0;i < column->sum;i++)
     {
-        q = p->next;
+        col = &column->col[i];
         label = json_new_object();
-        JNI_json_insert_int(label,"no",q->no);
-        JNI_json_insert_int(label,"state",q->state);
+        JNI_json_insert_int(label,"no",col->no);
+        JNI_json_insert_int(label,"state",col->state);
         json_insert_child(arr,label);
-        p = q;
 
     }
 
@@ -734,38 +746,27 @@ Java_com_easivend_evprotocol_EVprotocol_bentoCheck
 {
 	jstring str;
 	jint ret;
-    json_t *root = NULL, *entry = NULL, *label;
-    char *text,id[10] = {0},i;
-	ST_BENTO_FEATURE st_bento;
+    json_t *root = NULL;
+    char *text = NULL;
+
+    ST_COLUMN_RPT st_bento;
     env = env; obj = obj;
     EV_LOGI("EV_bento_check:start\n");
 	ret = EV_bento_check(cabinet, &st_bento);
-
+    EV_LOGI("EV_bento_check:end ret = %d\n",ret);
 	if(ret == 1)
 	{
-			root = json_new_object();
-    		entry = json_new_object();
-			JNI_json_insert_str(entry,JSON_TYPE,"EV_BENTO_FEATURE");
-			JNI_json_insert_int(entry,"boxNum",st_bento.boxNum);
-			JNI_json_insert_int(entry,"HotSupport",st_bento.ishot);
-			JNI_json_insert_int(entry,"CoolSupport",st_bento.iscool);
-			JNI_json_insert_int(entry,"LightSupport",st_bento.islight);
-			for(i = 0;i < 7;i++)
-			{
-                sprintf(&id[i * 2],"%02x",st_bento.id[i]);
-			}
-			
-			JNI_json_insert_str(entry,"ID",id);
-			label = json_new_string(JSON_HEAD);
-			json_insert_child(label,entry);
-			json_insert_child(root,label);
-			json_tree_to_string(root, &text);
-
-			str = (*g_env)->NewStringUTF(g_env,text);
-            free(text);
-			json_free_value(&root);
-			return str;
+            root = JNI_column_rpt(&st_bento);
+            if(root != NULL)
+            {
+                json_tree_to_string(root, &text);
+                str = (*env)->NewStringUTF(env,text);
+                free(text);
+                json_free_value(&root);
+                return str;
+            }
 	}
-	str = (*g_env)->NewStringUTF(g_env,"");
+
+    str = (*env)->NewStringUTF(env,"ERR");
 	return str;
 }

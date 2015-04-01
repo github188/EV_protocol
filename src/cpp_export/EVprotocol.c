@@ -153,7 +153,7 @@ int EV_API EV_bentoLight(int cabinet, int flag)
 }
 
 
-int EV_API EV_bentoCheck(int cabinet,ST_BENTO_FEATURE *info)
+int EV_API EV_bentoCheck(int cabinet,ST_COLUMN_RPT *info)
 {
     return EV_bento_check(cabinet,info);
 }

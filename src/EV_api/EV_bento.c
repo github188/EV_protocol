@@ -9,6 +9,7 @@
 #include "yoc_serialport.h"
 #include "timer.h"
 #include "ev_config.h"
+#include "EVprotocol.h"
 
 static Y_FD bento_fd;
 
@@ -170,7 +171,7 @@ int EV_bento_light(int cabinet,uint8 flag)
 }
 
 
-int  EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
+int  EV_bento_check(int cabinet,ST_COLUMN_RPT *st_bento)
 {
 	int ret = 0;
     uint8 buf[20] = {0},i;
@@ -188,16 +189,24 @@ int  EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento)
 	ret = EV_bento_send(EV_BENTO_TYPE_CHECK,cabinet&0xFF,0x00,buf);
 	if(ret == 1)
 	{
-		st_bento->boxNum = buf[6];
+        st_bento->sum = buf[6];
 		st_bento->ishot = (buf[8] & 0x01);
 		st_bento->iscool = ((buf[8] >> 1) & 0x01);
 		st_bento->islight = ((buf[8] >> 2) & 0x01);
-		for(i = 0;i < 7;i++)
-		{
+
+        memset(st_bento->id,0,sizeof(st_bento->id));
+
+        st_bento->id_len = 7;
+        st_bento->type = 5;
+		for(i = 0;i < 7;i++){
 			st_bento->id[i] = buf[9 + i];
 		}
-        EV_LOGD("EV_bento_check:num=%d islight=%d id=%s\n",st_bento->boxNum,
-                st_bento->islight,st_bento->id);
+        for(i = 0;i < st_bento->sum;i++){
+            st_bento->col[i].no = (i + 1);
+            st_bento->col[i].state = 0;
+        }
+        EV_LOGD("EV_bento_check:num=%d islight=%d \n",st_bento->sum,
+                st_bento->islight);
 		return 1;
 		
 	}

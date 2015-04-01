@@ -26,6 +26,6 @@ int EV_bento_open(int cabinet,int box);
 int EV_bento_openSerial(char *portName,int baud,int databits,char parity,int stopbits)
 ;
 int EV_bento_closeSerial();
-int EV_bento_check(int cabinet,ST_BENTO_FEATURE *st_bento);
+int EV_bento_check(int cabinet,ST_COLUMN_RPT *st_bento);
 int EV_bento_light(int cabinet,uint8 flag);
 #endif

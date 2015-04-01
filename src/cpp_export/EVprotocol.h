@@ -167,12 +167,13 @@ typedef struct _st_payout_rpt_{
 }ST_PAYOUT_RPT;
 
 
-//货道单链表
-struct ST_COLUMN{
+
+
+
+typedef struct _st_column_{
     uint8 state;//每道的状态 0正常 1故障 2 无货 3 暂不可用
     uint8 no; //货道号
-    struct ST_COLUMN *next;
-};
+}ST_COLUMN;
 
 
 
@@ -180,21 +181,16 @@ struct ST_COLUMN{
 typedef struct _st_column_rpt_{
     uint8 cabinet_no;//柜子号
     uint32 sum;      //该柜子总的货道数量
-    uint8 type;             //柜子类型
-    struct ST_COLUMN head;
-}ST_COLUMN_RPT;
-
-
-
-
-typedef struct _st_bento_feature_{
-
+    uint8 type;             //柜子类型 1弹簧柜子  5格子柜子
+    uint8 id[20];    //柜子ID号
+    uint8 id_len;   //柜子ID有效长度
     uint8 ishot;
     uint8 islight;
     uint8 iscool;
-    uint16 boxNum;
-    uint8 id[10];
-}ST_BENTO_FEATURE;
+    ST_COLUMN col[120];
+}ST_COLUMN_RPT;
+
+
 
 
 //VMC当前状态
@@ -246,7 +242,7 @@ EV_EXPORT int   EV_API  EV_bentoRegister(char *portName);
 EV_EXPORT int   EV_API  EV_bentoOpen(int cabinet, int box);
 EV_EXPORT int   EV_API  EV_bentoRelease();
 EV_EXPORT int   EV_API  EV_bentoLight(int cabinet, int flag);
-EV_EXPORT int   EV_API  EV_bentoCheck(int cabinet,ST_BENTO_FEATURE *info);
+EV_EXPORT int   EV_API  EV_bentoCheck(int cabinet,ST_COLUMN_RPT *info);
 EV_EXPORT int   EV_API  EV_cashControl(int flag);
 EV_EXPORT int   EV_API  EV_cabinetControl(int cabinet, int dev, int flag);
 EV_EXPORT int   EV_API  EV_setDate(const void *date);

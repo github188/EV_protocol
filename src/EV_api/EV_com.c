@@ -578,8 +578,7 @@ void EV_task()
         EV_timer_start(timerId_vmc,EV_TIMEROUT_VMC);
     }
     EV_msleep(50);
-
-    EV_LOGD("EV_task....");
+    //EV_LOGD("EV_task....");
     if(timer_vmc_timeout == 1)//通信超时
     {
         timer_vmc_timeout = 0;
@@ -736,12 +735,10 @@ static void EV_column_rpt(uint8 *data)
     uint8 index = MT + 1,i,j,temp,temp1;
     uint32 sum = 0;
     ST_COLUMN_RPT column;
-    struct ST_COLUMN *hd,*p,*q;
 
-
-    p = &column.head;
-    column.head.next = NULL;
     column.cabinet_no  = data[index++];
+
+    column.id_len = 0;
 
     for(i = 0;i < 8;i++)
     {
@@ -752,42 +749,20 @@ static void EV_column_rpt(uint8 *data)
             temp = (temp >> 6) & 0x03;
             if(temp == 2)//货道不存在
                 continue;
-            //创建货到链表
-            hd = (struct ST_COLUMN  *)malloc(sizeof(struct ST_COLUMN));
-            if(hd == NULL)
-            {
-                EV_LOGE("EV_column_rpt:malloc err!!!!!\n");
-                return;
-            }
-            hd->next = NULL;
-            hd->no = (j < 9) ? (i + 1) * 10 + j + 1 : (i + 1) * 10;
-
+            column.col[sum].no = (j < 9) ? (i + 1) * 10 + j + 1 : (i + 1) * 10;
             if(temp == 0)//正常
-                hd->state = (temp1 == 0) ? 2 : 0;
+                column.col[sum].state = (temp1 == 0) ? 2 : 0;
             else if(temp == 1)//故障
-                hd->state = 1;
+                column.col[sum].state = 1;
             else //暂不可用
-                hd->state = 3;
+                column.col[sum].state = 3;
 
             sum++;
-            p->next = hd;//插入链表
-            p = hd;
         }
     }
-
     column.sum = sum;
     column.type = 1;
-
     EV_callbackhandle(EV_COLUMN_RPT,&column);
-
-    //清理链表
-    while(p->next != NULL)
-    {
-        q = p->next;
-        free(p);
-        p = q;
-    }
-
 }
 
 
