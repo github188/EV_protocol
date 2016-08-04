@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(EV_callBackSignal(quint8,const void*)),
             this,SLOT(EV_callBackSlot(quint8,const void*)),Qt::QueuedConnection);
     isAllColumnTest = false;
+    isAllBoxOpen = false;
 }
 
 MainWindow::~MainWindow()
@@ -309,25 +310,30 @@ void MainWindow::on_pushButton_bentoPort_clicked(bool checked)
         if(bentoRelease){
             bentoRelease();
         }
+        curBoxNum = 200;
         ui->pushButton_bentoPort->setText(tr("打开串口"));
     }
 }
 
 void MainWindow::on_pushButton_bentoCheck_clicked()
 {
-    typedef int (*EV_bentoCheck)(int,ST_BENTO_FEATURE *);
+    typedef int (*EV_bentoCheck)(int,ST_COLUMN_RPT *);
     EV_bentoCheck bentoCheck = (EV_bentoCheck)lib.resolve("EV_bentoCheck");
     if(bentoCheck){
         bool ok;
         quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
-        ST_BENTO_FEATURE st_bento;
+        ST_COLUMN_RPT st_bento;
         int ret = bentoCheck(cabinet,&st_bento);
 
         if(ret == 1){
-            ui->lineEdit_bentoBoxNum->setText(QString("%1").arg(st_bento.boxNum));
+            ui->lineEdit_bentoBoxNum->setText(QString("%1").arg(st_bento.sum));
+            boxSum = st_bento.sum;
+        }
+        else{
+            boxSum = 0;
         }
 
-        qDebug()<<"EV_bentoCheck:"<<st_bento.boxNum<<st_bento.id;
+        qDebug()<<"EV_bentoCheck:"<<st_bento.sum<<st_bento.id;
 
     }
 
@@ -362,4 +368,36 @@ void MainWindow::on_radioButton_bentoLightOff_clicked(bool checked)
         bentoLight(cabinet,0);
     }
 
+}
+
+void MainWindow::on_pushButton_allboxopen_clicked()
+{
+
+    on_pushButton_bentoCheck_clicked();
+
+
+    isAllBoxOpen = true;
+    curBoxNum = 1;
+    startTimer(100);
+}
+
+
+void MainWindow::timerEvent(QTimerEvent *e)
+{
+    qDebug()<<"timerEvent:"<<e->timerId()<<" curBox"<<curBoxNum<<" boxSum:"<<boxSum;
+    killTimer(e->timerId());
+    if(curBoxNum < (boxSum + 1)){
+        typedef int (*EV_bentoOpen)(int cabinet, int box);
+        EV_bentoOpen bentoOpen = (EV_bentoOpen)lib.resolve("EV_bentoOpen");
+        if(bentoOpen)
+        {
+            bool ok;
+            quint8 cabinet = ui->lineEdit_bentoCabinet->text().toInt(&ok);
+            bentoOpen(cabinet,curBoxNum);
+        }
+        curBoxNum++;
+        startTimer(10);
+    }
+    else{
+    }
 }

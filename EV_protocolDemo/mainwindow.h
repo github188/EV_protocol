@@ -6,6 +6,8 @@
 #include <QLibrary>
 #include "EVprotocol.h"
 #include <QHash>
+#include <QTimerEvent>
+
 namespace Ui {
 class MainWindow;
 }
@@ -23,6 +25,9 @@ public:
     void EV_fun(int type,const void *ptr);
 
 
+
+protected:
+    void timerEvent(QTimerEvent *);
 
 signals:
     void EV_callBackSignal(const quint8 type,const void *ptr);
@@ -48,6 +53,8 @@ private slots:
 
     void on_radioButton_bentoLightOff_clicked(bool checked);
 
+    void on_pushButton_allboxopen_clicked();
+
 private:
     Ui::MainWindow *ui;
     QLibrary lib;
@@ -60,6 +67,11 @@ private:
     QHash<int,quint32> tradeHash;
     quint32 tradeNum;
 
+
+    bool isAllBoxOpen;
+    quint32 curBoxNum;
+    quint32 boxSum;
+    int timerId;
 };
 
 #endif // MAINWINDOW_H
